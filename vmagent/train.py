@@ -37,7 +37,7 @@ logpath = '../log/search_'+str(args.learner)+conf.env+'/'+str(args.learner) + \
 # reward discount
 logx.initialize(logdir=logpath, coolname=True, tensorboard=True)
 
-
+# N is the number of servers, cpu and mem are the attribute of the server
 def make_env(N, cpu, mem, allow_release, double_thr=1e10):
     def _init():
         env = SchedEnv(N, cpu, mem, DATA_PATH, render_path=None,
@@ -49,7 +49,6 @@ def make_env(N, cpu, mem, allow_release, double_thr=1e10):
 
 
 def run(envs, step_list, mac, mem, learner, eps, args):
-
     tot_reward = np.array([0. for j in range(args.num_process)])
     tot_lenth = np.array([0. for j in range(args.num_process)])
     step = 0
@@ -87,18 +86,21 @@ def run(envs, step_list, mac, mem, learner, eps, args):
 if __name__ == "__main__":
     # execution
     step_list = []
+    # args.num_process is defined in default.yaml as 5
     for i in range(args.num_process):
         step_list.append(np.random.randint(1000, 9999))
-    my_steps = np.array(step_list)
+    my_steps = np.array(step_list) # my_step is a 5 items' list, contains 5 random int from 1000-9999 
 
     if args.double_thr is None:
         double_thr = 1000
     else:
         double_thr = args.double_thr
 
+    # SubprocVecEnv是一个多进程wrapper，使得原来的实现可以并发
     envs = SubprocVecEnv([make_env(args.N, args.cpu, args.mem, allow_release=(
         args.allow_release == 'True'), double_thr=double_thr) for i in range(args.num_process)])
 
+    # 搭建模型
     mac = mac_REGISTRY[args.mac](args)
     print(f'Sampling with {args.mac} for {MAX_EPOCH} epochs; Learn with {args.learner}')
     learner = le_REGISTRY[args.learner](mac, args)
@@ -107,7 +109,7 @@ if __name__ == "__main__":
     for x in range(MAX_EPOCH):
         eps = linear_decay(x, [0, int(
             MAX_EPOCH * 0.25),  int(MAX_EPOCH * 0.9), MAX_EPOCH], [0.9, 0.5, 0.2, 0.2])
-        envs.reset(my_steps)
+        envs.reset(my_steps) # set env.t and env.start to my_steps
 
         train_rew, train_len = run(
             envs, my_steps, mac, mem, learner, eps, args)

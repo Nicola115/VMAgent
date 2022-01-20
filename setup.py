@@ -12,8 +12,8 @@ setup(name='schedgym',
       zip_safe=False,
       python_requires='>=3.6',
       install_requires=[
-            'gym==0.10.9',
-            'numpy==1.16.5',
+            'gym',
+            'numpy',
             'stable-baselines',
             'pandas'
       ]

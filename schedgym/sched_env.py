@@ -5,7 +5,6 @@ import gym
 from gym import spaces
 import json
 
-
 def getData(path, double_thr=1e10, smallFilter=False):
     '''
     csv_data: input a DataFrame Object
@@ -241,13 +240,14 @@ class SchedEnv(gym.Env):
         self.N = N
         self.cpu = cpu
         self.mem = mem
+        # cluster is a list of N servers
+        # server has total cpu，mem and remain cpu，mem
         self.cluster = Cluster(N, cpu, mem)
+        # getData transform path data into cleaned data
         self.requests = getData(path, double_thr)
         self.t = 0
         self.dur = 0
         self.allow_release = allow_release
-
-
         self.render_list = []
         self.render_path = render_path
         self.isrender = False
@@ -259,6 +259,7 @@ class SchedEnv(gym.Env):
     def get_property(self,):
         return self.N, self.cpu, self.mem
 
+    # reset the iteration steps for env
     def reset(self, step):
         '''
             return servers, request and usable list

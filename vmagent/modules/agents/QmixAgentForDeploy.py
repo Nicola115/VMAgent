@@ -9,21 +9,16 @@ def init_weights(m):
             th.nn.init.xavier_uniform(m.weight)
             m.bias.data.fill_(0.01)
 
-class QmixAgent(nn.Module):
+class QmixAgentForDeploy(nn.Module):
     '''
         Virtual Done Agent: Assume the req has been placed
         TODO: regularize the virtual done(i.e. negative input to -1 to indicate not appliable)
     '''
     def __init__(self, state_space, act_space, args):
         super(QmixAgent, self).__init__()
-        # state_space[0] = (N,2,2)
-        self.state_space = state_space[0]*args.N
-        # feat_space = (1,2,2)
+        self.state_space = state_space
         self.obs_space, self.feat_space = state_space[0], state_space[1]
-        # act_space = N*2
         self.num_actions = act_space
-        self.N = args.N
-        # self.abs_weight = (args.abs_weight=='True')
 
         self.flat = nn.Sequential(
             nn.Flatten(),
@@ -76,8 +71,6 @@ class QmixAgent(nn.Module):
 
 
     def forward(self, state):
-        # obs = (N,2,2)
-        # feat = (1,2,2)
         obs, feat = state[0], state[1]
         h01, h11 = self.flat(obs), self.flat(feat)
         bs = h01.shape[0]
@@ -86,17 +79,13 @@ class QmixAgent(nn.Module):
         h00 = h00.repeat(1,self.N*2).reshape((-1,h01.shape[1]))
         h01 = h01.reshape((-1, 4)).repeat(1, 2).reshape(-1, 4)
         h11 = h11.repeat(1, self.N).reshape((-1, 4))
-        # import pdb; pdb.set_trace()
+        import pdb; pdb.set_trace()
         h = h01 - h11
         s = h00
-        # import pdb; pdb.set_trace()
+        import pdb; pdb.set_trace()
         s = self.fc_s(s)
         o = self.fc_o(h)
         os = th.cat([s,o], dim=-1)
-        # if self.abs_weight:
-        #     # import pdb; pdb.set_trace()
-        #     weights = th.abs(self.fc_c(os))
-        # else:
         weights = self.fc_c(os)
 
         h= self.fc0(h)
@@ -105,13 +94,10 @@ class QmixAgent(nn.Module):
         h3 = self.fc2(h3)
 
         q_values = self.value(h3)
-        # import ipdb; ipdb.set_trace()
+        import ipdb; ipdb.set_trace()
         w_q_values = q_values * weights
         w_q_values = w_q_values.reshape((bs, -1))
         if len(w_q_values.shape) == 1:
             return w_q_values.reshape(1, -1)
         else:
             return w_q_values
-
-
-
