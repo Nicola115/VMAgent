@@ -1,5 +1,6 @@
 name: VMagent
 channels:
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge
   - defaults
 dependencies:
   - _pytorch_select=0.1=cpu_0
@@ -87,4 +88,3 @@ dependencies:
     - tabulate==0.8.9
     - tensorboardx==2.4.1
     - typing-extensions==4.0.1
-prefix: /opt/homebrew/anaconda3/envs/VMagent

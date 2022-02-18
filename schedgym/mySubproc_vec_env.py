@@ -23,7 +23,8 @@ def _worker(remote, parent_remote, env_fn_wrapper):
             # elif cmd == 'seed':
             #     remote.send(env.seed(data))
             elif cmd == 'reset':
-                observation = env.reset(data)
+                step, nodes, pods = data
+                observation = env.reset(step,nodes,pods)
                 remote.send(observation)
             elif cmd == 'get_attr':
                 remote.send(env.get_attr(data))
@@ -115,13 +116,13 @@ class SubprocVecEnv(VecEnv):
         self.alives = self.alives2.copy()
 
 
-    def reset(self, steps):
+    def reset(self, steps, nodes=None, pods=None):
         if type(steps) is int:
             for remote in self.remotes:
-                remote.send(('reset', steps))
+                remote.send(('reset', (steps, nodes, pods)))
         else:
             for remote, step in zip(self.remotes, steps):
-                remote.send(('reset', step))
+                remote.send(('reset', (step, nodes, pods)))
         obs = [remote.recv() for remote in self.remotes]
         self.alives = np.array([True for i in range(self.n_envs)])
         self.alives2 = np.array([True for i in range(self.n_envs)])

@@ -16,18 +16,14 @@ class DeployMAC:
         self.node_num = args.node_num
         # TODO: build agents according to action space and obs space
         action_space = [args.node_num*5, args.node_num]
-        obs_space = args.node_num*51*4
+        obs_space = [(args.node_num,51,4)]
         self._build_agents(obs_space, action_space, args)
         # TODO: adapted action_selector
-        self.action_selector = action_REGISTRY['epsilon_greedy'](args)
+        self.action_selector = action_REGISTRY['softmax_pos'](args)
 
     def select_actions(self, ep_batch, eps):
         agent_outputs = self.forward(ep_batch)
-        avail_actions = []
-        for i in range(5*self.node_num):
-            for j in range(self.node_num):
-                avail_actions.append([i,j])
-        chosen_actions = self.action_selector.select_action(agent_outputs, eps,avail_actions, 0)
+        chosen_actions = self.action_selector.select_action(agent_outputs)
         try:
             chosen_actions.cpu().numpy()
         except:
@@ -44,10 +40,10 @@ class DeployMAC:
             # avail_actions = th.Tensor(states['avail']).cuda()
             # import pdb; pdb.set_trace()
             obs = th.Tensor(states['obs']).cuda()
-            feat = th.Tensor(states['feat']).cuda()
-            return [obs, feat]
+            # feat = th.Tensor(states['feat']).cuda()
+            return [obs]
         else:
-            return states[0], states[1]
+            return states
 
     def _build_agents(self, obs_space, action_space, args):
         self.agent = agent_REGISTRY[self.args.agent](obs_space, action_space, args).cuda()

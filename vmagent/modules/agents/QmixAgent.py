@@ -78,13 +78,21 @@ class QmixAgent(nn.Module):
     def forward(self, state):
         # obs = (N,2,2)
         # feat = (1,2,2)
+        # real obs = [5,100,2,2]
+        # real feat = [5,2,2,2]
         obs, feat = state[0], state[1]
+        # real h01 = [5,400]
+        # real h11 = [5,8]
         h01, h11 = self.flat(obs), self.flat(feat)
+        # bs = 5
         bs = h01.shape[0]
         h00 = copy.deepcopy(h01)
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
+        # h00.shape = 1000,400
         h00 = h00.repeat(1,self.N*2).reshape((-1,h01.shape[1]))
+        # h01.shape = 1000,4
         h01 = h01.reshape((-1, 4)).repeat(1, 2).reshape(-1, 4)
+        # h11.shape = 5,8
         h11 = h11.repeat(1, self.N).reshape((-1, 4))
         # import pdb; pdb.set_trace()
         h = h01 - h11

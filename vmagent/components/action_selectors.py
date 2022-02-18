@@ -33,6 +33,14 @@ class EpsilonGreedyActionSelector():
         # picked_actions = random_actions
         return picked_actions
 
+class PossibilityActionSelector():
+    def __init__(self, args):
+        self.args = args
+
+    def select_action(self, agent_inputs):
+        picked_actions = agent_inputs.argmax(2)
+        return picked_actions
+
 
 class NormalACActionSelector():
     def __init__(self, args):
@@ -66,5 +74,6 @@ class PPOActionSelector():
 
 
 REGISTRY["epsilon_greedy"] = EpsilonGreedyActionSelector
+REGISTRY["softmax_pos"] = PossibilityActionSelector
 REGISTRY["AC"] = NormalACActionSelector
 REGISTRY["ppo"] = PPOActionSelector

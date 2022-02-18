@@ -2,19 +2,19 @@ from config import Config
 import os
 import copy
 import numpy as np
-from schedgym.sched_env import SchedEnv
-from schedgym.mySubproc_vec_env import SubprocVecEnv
 from utils.rl_utils import linear_decay, time_format
 import argparse
 from controllers import REGISTRY as mac_REGISTRY
 from learners import REGISTRY as le_REGISTRY
 from components import REGISTRY as mem_REGISTRY
+from schedgym import REGISTRY as env_REGISTRY
+from schedgym.mySubproc_vec_env import SubprocVecEnv
 from runx.logx import logx
 from hashlib import sha1
 import time
+import json
 
-
-DATA_PATH = 'vmagent/data/Huawei-East-1.csv'
+DATA_PATH = 'data/Huawei-East-1.csv'
 
 parser = argparse.ArgumentParser(description='Sched More Servers')
 parser.add_argument('--env', type=str)
@@ -40,10 +40,19 @@ logx.initialize(logdir=logpath, coolname=True, tensorboard=True)
 # N is the number of servers, cpu and mem are the attribute of the server
 def make_env(N, cpu, mem, allow_release, double_thr=1e10):
     def _init():
-        env = SchedEnv(N, cpu, mem, DATA_PATH, render_path=None,
-                       allow_release=allow_release, double_thr=double_thr)
+        if args.env=="schedenv":
+            env = env_REGISTRY[args.env](N, cpu, mem, DATA_PATH, render_path=None,
+                        allow_release=allow_release, double_thr=double_thr)
         # env.seed(seed + rank)
-        return env
+            return env
+        elif args.env=="deployenv":
+            #TODO: nodes和pods的初始化
+            with open('nodes.json','r')as f:
+                nodes = json.load(f)
+            with open('pods.json','r')as f:
+                pods = json.load(f)
+            env = env_REGISTRY[args.env](nodes,pods)
+            return env
     # set_global_seeds(seed)
     return _init
 
@@ -56,34 +65,40 @@ def run(envs, step_list, mac, mem, learner, eps, args):
     while True:
         # get action
         step += 1
+        print(step)
         envs.update_alives()
 
         alives = envs.get_alives().copy()
         if all(~alives):
             return tot_reward.mean(), tot_lenth.mean()
 
-        avail = envs.get_attr('avail')
-        feat = envs.get_attr('req')
-        obs = envs.get_attr('obs')
-        state = {'obs': obs, 'feat': feat, 'avail': avail}
+        if args.env=='deployenv':
+            obs = envs.get_attr('obs')
+            state = {'obs': obs}
+        else:
+            avail = envs.get_attr('avail')
+            feat = envs.get_attr('req')
+            obs = envs.get_attr('obs')
+            state = {'obs': obs, 'feat': feat, 'avail': avail}
         
         action = mac.select_actions(state, eps)
         
         action, next_obs, reward, done = envs.step(action)
         stop_idxs[alives] += 1
 
-        next_avail = envs.get_attr('avail')
-        next_feat = envs.get_attr('req')
         tot_reward[alives] += reward
         tot_lenth[alives] += 1
 
-        buf = {'obs': obs, 'feat': feat, 'avail': avail, 'action': action,
-               'reward': reward, 'next_obs': next_obs, 'next_feat': next_feat,
-               'next_avail': next_avail, 'done': done}
+        buf = {'obs': obs, 'action': action,'reward': reward, 'next_obs': next_obs, 'done': done}
         mem.push(buf)
 
 
 if __name__ == "__main__":
+    with open('nodes.json','r')as f:
+        nodes = json.load(f)
+    with open('pods.json','r')as f:
+        pods = json.load(f)
+
     # execution
     step_list = []
     # args.num_process is defined in default.yaml as 5
@@ -109,7 +124,10 @@ if __name__ == "__main__":
     for x in range(MAX_EPOCH):
         eps = linear_decay(x, [0, int(
             MAX_EPOCH * 0.25),  int(MAX_EPOCH * 0.9), MAX_EPOCH], [0.9, 0.5, 0.2, 0.2])
-        envs.reset(my_steps) # set env.t and env.start to my_steps
+        if args.env=='deployenv':
+            envs.reset(my_steps,nodes,pods)
+        else:
+            envs.reset(my_steps) # set env.t and env.start to my_steps
 
         train_rew, train_len = run(
             envs, my_steps, mac, mem, learner, eps, args)
@@ -127,7 +145,7 @@ if __name__ == "__main__":
         logx.metric('train', metrics, x)
 
         if x % args.test_interval == 0:
-            envs.reset(my_steps)
+            envs.reset(my_steps, nodes, pods)
             val_return, val_lenth = run(
                 envs, my_steps, mac, mem, learner, 0, args)
             val_metric = {

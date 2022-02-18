@@ -15,9 +15,9 @@ class QmixAgentForDeploy(nn.Module):
         TODO: regularize the virtual done(i.e. negative input to -1 to indicate not appliable)
     '''
     def __init__(self, state_space, act_space, args):
-        super(QmixAgent, self).__init__()
+        super(QmixAgentForDeploy, self).__init__()
         self.state_space = state_space
-        self.obs_space, self.feat_space = state_space[0], state_space[1]
+        self.obs_space = state_space[0]
         self.num_actions = act_space
 
         self.flat = nn.Sequential(
@@ -25,7 +25,7 @@ class QmixAgentForDeploy(nn.Module):
         )
 
         self.fc0 = nn.Sequential(
-            nn.Linear(4, 128),
+            nn.Linear(51*4, 128),
             nn.ReLU(),
             nn.Linear(128, 256),
             nn.ReLU()
@@ -41,17 +41,17 @@ class QmixAgentForDeploy(nn.Module):
         self.fc1 = nn.DataParallel(self.fc1)
 
         self.fc2 = nn.Sequential(
-            nn.Linear(64, self.obs_space[0]*2),
+            nn.Linear(64, self.obs_space[0]*50),
             nn.ReLU(),
         )
         self.fc2 = nn.DataParallel(self.fc2)
         self.fc_o = nn.Sequential(
-            nn.Linear(4, 16),
+            nn.Linear(51*4, 16),
             nn.ReLU()
         )
 
         self.fc_s = nn.Sequential(
-            nn.Linear(4*self.N, 32),
+            nn.Linear(4*self.obs_space[0]*51, 32),
             nn.ReLU()
         )
 
@@ -63,41 +63,58 @@ class QmixAgentForDeploy(nn.Module):
             nn.Linear(64, 1)
         )
 
-        self.value = nn.Linear(self.obs_space[0]*2, 1)
+        self.value = nn.Linear(self.obs_space[0]*50, 1)
         self.value = nn.DataParallel(self.value)
-        self.adv = nn.Linear(self.obs_space[0]*2, self.num_actions)
-
-
+        
+        self.softmax = nn.Softmax(dim=2)
 
 
     def forward(self, state):
-        obs, feat = state[0], state[1]
-        h01, h11 = self.flat(obs), self.flat(feat)
+        # import pdb;pdb.set_trace()
+        # obs = (5, 1, server_num, 51, 4)
+        obs = state[0]
+        # obs = (5, server_num*51*4)
+        h01 = self.flat(obs)
+        # bs = 5
         bs = h01.shape[0]
         h00 = copy.deepcopy(h01)
-        import pdb; pdb.set_trace()
-        h00 = h00.repeat(1,self.N*2).reshape((-1,h01.shape[1]))
-        h01 = h01.reshape((-1, 4)).repeat(1, 2).reshape(-1, 4)
-        h11 = h11.repeat(1, self.N).reshape((-1, 4))
-        import pdb; pdb.set_trace()
-        h = h01 - h11
+        
+        # h00 = (1, server_nums*50, 5, server_num*51*4) = (server_num*50*5, server_num*51*4)
+        h00 = h00.repeat(1,self.obs_space[0]*50).reshape((-1,h01.shape[1]))
+        # h01 = (5*server_num, 51*4) = (1,50,5*server_num, 51*4) = (server_num*50*5, 51*4)
+        h01 = h01.reshape((-1, 51*4)).repeat(1, 50).reshape(-1, 51*4)
+        
+        h = h01
         s = h00
-        import pdb; pdb.set_trace()
+        
+        # s = (server_num*50*5,32)
         s = self.fc_s(s)
+        # o = (server_num*50*5,16)
         o = self.fc_o(h)
+        # os = (server_num*50*5,48)
         os = th.cat([s,o], dim=-1)
+        # weights = (server_num*50*5,1)
         weights = self.fc_c(os)
 
+        # h = (server_num*50*5, 256)
         h= self.fc0(h)
 
+        # h = (server_num*50*5, 64)
         h3 = self.fc1(h)
+        # h = (server_num*50*5, server_num*2)
         h3 = self.fc2(h3)
 
+        # q_values = (server_num*50*5, 1)
         q_values = self.value(h3)
-        import ipdb; ipdb.set_trace()
+        # TOBE: w_q_value = (5*500, 1)
+        # w_q_values = (server_num*50*5, 1)
         w_q_values = q_values * weights
-        w_q_values = w_q_values.reshape((bs, -1))
-        if len(w_q_values.shape) == 1:
-            return w_q_values.reshape(1, -1)
+        # w_q_value = (5, 50, server_num)
+        w_q_values = w_q_values.reshape((bs, 50, -1))
+        w_q_values = self.softmax(w_q_values)
+        w_actions = w_q_values
+        # w_actions = w_q_values.argmax(2)
+        if len(w_actions.shape) == 1:
+            return w_actions.reshape(1, -1)
         else:
-            return w_q_values
+            return w_actions

@@ -11,13 +11,13 @@ SMALL_REQ = [(1, 1), (1, 2), (1, 4), (4, 4), (2, 4)]
 class ReplayMemory:
     def __init__(self, args):
         self.capacity = args.capacity
-        self.memory = {'obs': np.array([]), 'feat': np.array([]), 'avail': np.array([]), 'action': np.array([]),
-                       'reward': np.array([]), 'next_obs': np.array([]), 'next_feat': np.array([]), 'next_avail': np.array([]), 'done': np.array([])}
+        self.memory = {'obs': np.array([]), 'action': np.array([]),
+                       'reward': np.array([]), 'next_obs': np.array([]), 'done': np.array([])}
         self.nb_sampels = 0
 
     def clean(self,):
-        self.memory = {'obs': np.array([]), 'feat': np.array([]), 'avail': np.array([]), 'action': np.array([]),
-                       'reward': np.array([]), 'next_obs': np.array([]), 'next_feat': np.array([]), 'next_avail': np.array([]), 'done': np.array([])}
+        self.memory = {'obs': np.array([]), 'action': np.array([]),
+                       'reward': np.array([]), 'next_obs': np.array([]), 'done': np.array([])}
         self.nb_sampels = 0
 
     def push(self, exp):
