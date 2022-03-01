@@ -1,3 +1,4 @@
+import torch.nn as nn
 '''
 TODO List:
     1.  为了固定输入size，原计划针对过去一段时间的state作为observation
@@ -10,6 +11,11 @@ import torch as th
 from modules.agents import REGISTRY as agent_REGISTRY
 from components.action_selectors import REGISTRY as action_REGISTRY
 
+def init_weights(m):
+        if type(m) == nn.Linear or type(m) == nn.Conv2d:
+            nn.init.xavier_uniform(m.weight)
+            m.bias.data.fill_(0.01)
+
 class DeployMAC:
     def __init__(self, args):
         self.args = args
@@ -20,6 +26,7 @@ class DeployMAC:
         self._build_agents(obs_space, action_space, args)
         # TODO: adapted action_selector
         self.action_selector = action_REGISTRY['softmax_pos'](args)
+        self.agent.apply(init_weights)
 
     def select_actions(self, ep_batch, eps):
         agent_outputs = self.forward(ep_batch)

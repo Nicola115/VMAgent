@@ -293,7 +293,7 @@ class DeployEnv(gym.Env):
         self.handle_next_request()
         self.t += 1
         reward = self.reward(actions)
-        state = self.cluster.describe((self.t-1)*300)
+        state = self.cluster.describe((self.t)*300)
         done = self.termination()
         self.cluster.clean((self.t-1)*300)
         return actions, state, reward, done

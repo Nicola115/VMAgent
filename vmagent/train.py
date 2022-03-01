@@ -65,7 +65,7 @@ def run(envs, step_list, mac, mem, learner, eps, args):
     while True:
         # get action
         step += 1
-        print(step)
+        # print(step)
         envs.update_alives()
 
         alives = envs.get_alives().copy()
@@ -117,6 +117,8 @@ if __name__ == "__main__":
 
     # 搭建模型
     mac = mac_REGISTRY[args.mac](args)
+    # import pdb
+    # pdb.set_trace()
     print(f'Sampling with {args.mac} for {MAX_EPOCH} epochs; Learn with {args.learner}')
     learner = le_REGISTRY[args.learner](mac, args)
     mem = mem_REGISTRY[args.memory](args)
@@ -135,6 +137,8 @@ if __name__ == "__main__":
 
         # start optimization
         for i in range(args.train_n):
+            # import pdb
+            # pdb.set_trace()
             batch = mem.sample(BATCH_SIZE)
             metrics = learner.train(batch)
 
@@ -142,6 +146,7 @@ if __name__ == "__main__":
         metrics['eps'] = eps
         metrics['tot_reward'] = train_rew.mean()
         metrics['tot_len'] = train_len.mean()
+        print(f'Epoch {x}/{MAX_EPOCH}; total_reward: {train_rew.mean()}, total_len: {train_len.mean()} ')
         logx.metric('train', metrics, x)
 
         if x % args.test_interval == 0:

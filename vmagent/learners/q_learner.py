@@ -261,88 +261,54 @@ class QmixLearner:
         return td_error_array
 
     def train(self, batch):
-        # Get the relevant quantities
+        import pdb
+        pdb.set_trace()
+        # 1. get history observation, action, reward and next observation
         obs = batch['obs']
-        # feat = batch['feat']
-        # avail = batch['avail']
         action_list = batch['action']
         reward_list = batch['reward']
         next_obs = batch['next_obs']
-        # next_feat = batch['next_feat']
         mask_list = 1 - batch['done']
-        # next_avail = batch['next_avail']
         y_list = [0]
 
         obs = th.FloatTensor(obs)
-        # feat = th.FloatTensor(feat)
-        # feat_z = th.zeros_like(feat)
-        # avail = th.FloatTensor(avail)
-        a = th.LongTensor(action_list)#batch.action))
-        rew = th.FloatTensor(reward_list)##batch.reward))
-        rew = rew.view(-1, 1)
-        rew = rew.repeat(1,50)
-        mask = th.LongTensor(mask_list)#batch.mask))
-        mask = mask.view(-1)#, 1)
-        mask = mask.reshape(-1,1)
-        mask = mask.repeat(1,50)
+        a = th.LongTensor(action_list)
+        rew = th.FloatTensor(reward_list)
+        rew = rew.view(-1, 1, 1)
+        rew = rew.repeat(1,50,10)
+        mask = th.LongTensor(mask_list)
+        mask = mask.reshape(-1,1,1)
+        mask = mask.repeat(1,50,10)
         next_obs = th.FloatTensor(next_obs)
-        # next_feat = th.FloatTensor(next_feat)
-        # next_feat_z = th.zeros_like(next_feat)
-        # next_avail = th.FloatTensor(next_avail)
+        
         ind =  th.arange(a.shape[0])
         if self.gpu_enable:
             obs = obs.cuda()
-            # feat = feat.cuda()
-            # feat_z = feat_z.cuda()
-            # avail = avail.cuda()
             a = a.cuda()
             rew = rew.cuda()
             mask = mask.cuda()
             next_obs = next_obs.cuda()
-            # next_feat = next_feat.cuda()
-            # next_feat_z = next_feat_z.cuda()
-            # next_avail = next_avail.cuda()
             ind =  ind.cuda()
         # Calculate estimated Q-Values
 
+        # 2. mac_out is calculated by the model which collects traces
         mac_out = self.mac.forward([obs])
-        # z_mac_out = self.mac.forward([obs])
 
-        # Pick the Q-Values for the actions taken by each agent
-        # import pdb;pdb.set_trace()
-        #TODO: edit
-        chosen_action_qvals = mac_out.argmax(2)# Remove the last dim
-        # chosen_action_qvals += th.sum(z_mac_out, 1) 
         target_mac_out = self.target_mac.forward([next_obs])
-        # z_target_mac_out = self.target_mac.forward([next_obs])
 
-
-
-        # Max over target Q-Values
-            # Get actions that maximise live Q (for double q-learning)
-        mac_out_detach = self.mac.forward([next_obs]).detach()
-        cur_max_actions = mac_out_detach.argmax(2)
-        cur_max_actions = cur_max_actions.reshape(-1)
-        target_max_qvals = target_mac_out.argmax(2)# - z_target_mac_out[ind, cur_max_actions]
-        # target_max_qvals += th.sum(z_target_mac_out, 1)
-
-
-        # Calculate 1-step Q-Learning targets
-        targets = rew + self.args.gamma * mask * target_max_qvals
+        targets = rew + self.args.gamma * mask * target_mac_out
 
         # Td-error
-        td_error = (chosen_action_qvals - targets.detach())
-        td_error = td_error.mean(dim=1)
-        td_error_array = td_error.float().cpu().data.numpy()
+        td_error = (mac_out - targets.detach())
+        td_error = td_error.mean(dim=(1,2))
+        td_error = td_error.requires_grad_()
 
         loss = (td_error ** 2).sum() / obs.shape[0]
         loss = loss.requires_grad_()
 
-
         # Optimise
         self.optimiser.zero_grad()
         loss.backward()
-        # grad_norm = th.nn.utils.clip_grad_norm_(self.params, self.args.grad_norm_clip)
         self.optimiser.step()
 
         self.learn_cnt += 1

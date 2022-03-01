@@ -4,11 +4,6 @@ import torch as th
 import numpy as np
 import copy
 
-def init_weights(m):
-        if type(m) == nn.Linear or type(m) == nn.Conv2d:
-            th.nn.init.xavier_uniform(m.weight)
-            m.bias.data.fill_(0.01)
-
 class QmixAgentForDeploy(nn.Module):
     '''
         Virtual Done Agent: Assume the req has been placed
