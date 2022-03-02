@@ -1,7 +1,9 @@
 import copy
 import torch as th
+import torch.nn as nn
 from torch.optim import RMSprop, Adam
 import numpy as np
+import torch.autograd as autograd
 import time
 
 class QLearner:
@@ -187,159 +189,145 @@ class QLearner:
         self.mac.cuda()
         self.target_mac.cuda()
 
-class QmixLearner:
-    def __init__(self, mac, args):
-        self.args = args
-        self.mac = mac
 
-        self.params = list(mac.parameters())
+class Critic(nn.Module):
+    def __init__(self, state_space, act_space):
+        super(Critic, self).__init__()
+        self.state_space = state_space
+        self.act_space = act_space
+
+        self.features = nn.Sequential(
+            nn.Conv2d(self.state_space[0],32,kernel_size=2,stride=1),
+            nn.ReLU(),
+            nn.Conv2d(32,64,kernel_size=2,stride=1),
+            nn.ReLU(),
+            nn.Conv2d(64,64,kernel_size=2,stride=1),
+            nn.ReLU()
+        )
+
+        self.fc = nn.Sequential(
+            nn.Linear(self.feature_size(),512),
+            nn.ReLU(),
+            nn.Linear(512,self.act_space)
+        )
+
+        self.fc2 = nn.Sequential(
+            nn.Linear(2*self.act_space, 512),
+            nn.ReLU(),
+            nn.Linear(512,128),
+            nn.ReLU(),
+            nn.Linear(128,1)
+        )
+
+    def feature_size(self):
+        return self.features(autograd.Variable(th.zeros(1,*self.state_space))).view(1,-1).size(-1)
+    
+    def forward(self, state, action):
+        x = th.transpose(state,2,4)
+        x = x.reshape(-1,x.shape[2],x.shape[3],x.shape[4])
+        x = self.features(x)
+        x = x.view(x.size(0),-1)
+        x = self.fc(x)
+        # TODO: action在这里需不需要放缩，concat的dim
+        # import pdb
+        # pdb.set_trace()
+        x = th.cat((x,action),1)
+        x = self.fc2(x)
+        return x
+
+
+class QmixLearner:
+    def __init__(self, actor, args):
+        self.args = args
+
+        self.actor = actor
+        self.target_actor = copy.deepcopy(actor)
+        self.actor_optimiser = Adam(self.actor.parameters(), lr=args.lr)
+        self.target_actor_param = list(self.target_actor.parameters())
+
+        self.critic = Critic((4,51,10),50).cuda() # TODO: avoiding hardcode, here should be state_space and act_space
+        self.target_critic = copy.deepcopy(self.critic)
+        self.critic_optimiser = Adam(self.critic.parameters(), lr=args.lr)
+        self.target_critic_param = list(self.target_critic.parameters())
 
         self.learn_cnt= 0
-
-        self.optimiser = Adam(self.params, lr=args.lr)
-
-        # a little wasteful to deepcopy (e.g. duplicates action selector), but should work for any MAC
-        self.target_mac = copy.deepcopy(mac)
-        self.target_param = list(self.target_mac.parameters())
-        self.last_target_update_episode = 0
         self.tau = self.args.tau
         self.gpu_enable = True
 
 
-    def get_td_error(self, batch):
-        obs = batch['obs']
-        next_obs = batch['next_obs']
-        action_list = batch['action']
-        reward_list = batch['reward']
-        mask_list = 1 - batch['done']
-        y_list = [0]
-
-        obs = th.FloatTensor(np.array(obs))
-        a = th.LongTensor(np.array(action_list))#batch.action))
-        rew = th.FloatTensor(np.array(reward_list))##batch.reward))
-        rew = rew.view(-1)#, 1)
-        mask = th.LongTensor(np.array(mask_list))#batch.mask))
-        mask = mask.view(-1)#, 1)
-        next_obs = th.FloatTensor(np.array(next_obs))
-        ind =  th.arange(a.shape[0])
-        if self.gpu_enable:
-            obs = obs.cuda()
-            # feat = feat.cuda()
-            # avail = avail.cuda()
-            a = a.cuda()
-            rew = rew.cuda()
-            mask = mask.cuda()
-            next_obs = next_obs.cuda()
-            # next_feat = next_feat.cuda()
-            # next_avail = next_avail.cuda()
-            ind =  ind.cuda()
-        # Calculate estimated Q-Values
-
-        # import pdb; pdb.set_trace()
-        mac_out = self.mac.forward([obs])
-
-        # Pick the Q-Values for the actions taken by each agent
-        import pdb;pdb.set_trace()
-        chosen_action_qvals = mac_out[ind, a]  # Remove the last dim
-        target_mac_out = self.target_mac.forward([next_obs])
-
-
-        # Max over target Q-Values
-            # Get actions that maximise live Q (for double q-learning)
-        mac_out_detach = self.mac.forward([next_obs]).detach()
-        cur_max_actions = th.argmax(mac_out_detach, axis=1)
-        cur_max_actions = cur_max_actions.reshape(-1)
-        target_max_qvals = target_mac_out[ind, cur_max_actions]
-
-
-        # Calculate 1-step Q-Learning targets
-        targets = rew + self.args.gamma * mask * target_max_qvals
-
-        # Td-error
-        td_error = (chosen_action_qvals - targets.detach())
-        td_error_array=td_error.float().cpu().data.numpy()
-        return td_error_array
-
     def train(self, batch):
-        import pdb
-        pdb.set_trace()
         # 1. get history observation, action, reward and next observation
         obs = batch['obs']
         action_list = batch['action']
         reward_list = batch['reward']
         next_obs = batch['next_obs']
         mask_list = 1 - batch['done']
-        y_list = [0]
-
         obs = th.FloatTensor(obs)
-        a = th.LongTensor(action_list)
+        a = th.FloatTensor(action_list)
         rew = th.FloatTensor(reward_list)
-        rew = rew.view(-1, 1, 1)
-        rew = rew.repeat(1,50,10)
         mask = th.LongTensor(mask_list)
-        mask = mask.reshape(-1,1,1)
-        mask = mask.repeat(1,50,10)
         next_obs = th.FloatTensor(next_obs)
         
-        ind =  th.arange(a.shape[0])
         if self.gpu_enable:
             obs = obs.cuda()
             a = a.cuda()
             rew = rew.cuda()
             mask = mask.cuda()
             next_obs = next_obs.cuda()
-            ind =  ind.cuda()
-        # Calculate estimated Q-Values
 
-        # 2. mac_out is calculated by the model which collects traces
-        mac_out = self.mac.forward([obs])
+        # 2. update critic
+        critic_out = self.critic.forward(obs,a)
+        target_actor_out = self.target_actor.forward(next_obs)
+        target_critic_out = self.target_critic.forward(next_obs,target_actor_out)
+        y = rew + self.args.gamma * mask * target_critic_out
+        td_error = (critic_out - y.detach())
+        loss_for_critic = (td_error**2).sum() / obs.shape[0]
+        self.critic_optimiser.zero_grad()
+        loss_for_critic.backward()
+        self.critic_optimiser.step()
 
-        target_mac_out = self.target_mac.forward([next_obs])
+        # 3. freeze critic and update actor
+        for param in self.critic.parameters():
+            param.requires_grad = False
 
-        targets = rew + self.args.gamma * mask * target_mac_out
+        actor_out = self.actor.forward(obs)
+        freeze_critic_out = self.critic.forward(obs, actor_out)
+        loss_for_actor = - freeze_critic_out.sum() / obs.shape[0] #TODO: this loss function can be replaced by gan loss
+        self.actor_optimiser.zero_grad()
+        loss_for_actor.backward()
+        self.actor_optimiser.step()
 
-        # Td-error
-        td_error = (mac_out - targets.detach())
-        td_error = td_error.mean(dim=(1,2))
-        td_error = td_error.requires_grad_()
+        for param in self.critic.parameters():
+            param.requires_grad = True
 
-        loss = (td_error ** 2).sum() / obs.shape[0]
-        loss = loss.requires_grad_()
-
-        # Optimise
-        self.optimiser.zero_grad()
-        loss.backward()
-        self.optimiser.step()
-
+        # 4. if meets update target interval,update target networks weights
         self.learn_cnt += 1
         if  self.learn_cnt / self.args.target_update_interval >= 1.0:
             self._update_targets()
             self.learn_cnt = 0
         return {
-            'critic_loss': loss
+            'critic_loss': loss_for_critic
         }
 
-
-
     def _update_targets(self):
-        for target_param, local_param in zip(self.target_mac.parameters(), self.mac.parameters()):
+        for target_param, local_param in zip(self.target_critic.parameters(), self.critic.parameters()):
             target_param.data.copy_(self.tau*local_param.data + (1.0-self.tau)*target_param.data)
-        # self.target_mac.load_state(self.mac)
+
+        for target_param, local_param in zip(self.target_actor.parameters(), self.actor.parameters()):
+            target_param.data.copy_(self.tau*local_param.data + (1.0-self.tau)*target_param.data)
 
     def cuda(self):
-        self.mac.cuda()
-        self.target_mac.cuda()
+        self.critic.cuda()
+        self.target_critic.cuda()
+        self.actor.cuda()
+        self.target_actor.cuda()
 
     def save_models(self, path):
-        self.mac.save_models(path)
-        th.save(self.optimiser.state_dict(), "{}/opt.th".format(path))
+        self.actor.save_models(path)
+        th.save(self.actor_optimiser.state_dict(), "{}/opt.th".format(path))
 
     def load_models(self, path):
-        self.mac.load_models(path)
+        self.actor.load_models(path)
         # Not quite right but I don't want to save target networks
-        self.target_mac.load_models(path)
-        self.optimiser.load_state_dict(th.load("{}/opt.th".format(path), map_location=lambda storage, loc: storage))
-
-    def cuda(self):
-        self.mac.cuda()
-        self.target_mac.cuda()
+        self.target_actor.load_models(path)
+        self.actor_optimiser.load_state_dict(th.load("{}/opt.th".format(path), map_location=lambda storage, loc: storage))

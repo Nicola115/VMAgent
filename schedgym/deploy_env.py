@@ -141,8 +141,7 @@ class ClusterState():
         self.nodes[self.pods[handle_pod].current_node].update()
 
     def handle_migration(self, action):
-        assert action.shape==(1,50), f'{action.shape}'
-        action = action[0]
+        assert action.shape==(50,), f'{action.shape}'
         for pod_index, pod_action in enumerate(action):
             assert pod_action>=0 and pod_action<=9,f'{pod_action}' 
             if self.pods[pod_index].current_node==pod_action:
@@ -156,8 +155,7 @@ class ClusterState():
             self.nodes[pod_action].update()
 
     def migrationCost(self,action):
-        assert action.shape==(1,50), f'{action.shape}'
-        action = action[0]
+        assert action.shape==(50,), f'{action.shape}'
         migration_cost = 0
         for pod_index, pod_action in enumerate(action):
             assert pod_action>=0 and pod_action<=9,f'{pod_action}' 
@@ -293,8 +291,8 @@ class DeployEnv(gym.Env):
         3. getNextData handle下一个五分钟内的请求，更改cluster状态
     '''
     def step(self, actions):
-        import pdb
-        pdb.set_trace()
+        # import pdb
+        # pdb.set_trace()
         self._step(actions)
         self.handle_next_request()
         self.t += 1

@@ -81,7 +81,7 @@ def run(envs, step_list, mac, mem, learner, eps, args):
             obs = envs.get_attr('obs')
             state = {'obs': obs, 'feat': feat, 'avail': avail}
         
-        action = mac.select_actions(state, eps)
+        action, raw_action = mac.select_actions(state, eps)
         
         action, next_obs, reward, done = envs.step(action)
         stop_idxs[alives] += 1
@@ -89,7 +89,7 @@ def run(envs, step_list, mac, mem, learner, eps, args):
         tot_reward[alives] += reward
         tot_lenth[alives] += 1
 
-        buf = {'obs': obs, 'action': action,'reward': reward, 'next_obs': next_obs, 'done': done}
+        buf = {'obs': obs, 'action': raw_action,'reward': reward, 'next_obs': next_obs, 'done': done}
         mem.push(buf)
 
 

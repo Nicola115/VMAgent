@@ -1,4 +1,3 @@
-import torch.nn as nn
 '''
 TODO List:
     1.  为了固定输入size，原计划针对过去一段时间的state作为observation
@@ -8,8 +7,10 @@ TODO List:
 '''
 
 import torch as th
+import torch.nn as nn
 from modules.agents import REGISTRY as agent_REGISTRY
 from components.action_selectors import REGISTRY as action_REGISTRY
+import numpy as np
 
 def init_weights(m):
         if type(m) == nn.Linear or type(m) == nn.Conv2d:
@@ -20,22 +21,23 @@ class DeployMAC:
     def __init__(self, args):
         self.args = args
         self.node_num = args.node_num
-        # TODO: build agents according to action space and obs space
-        action_space = [args.node_num*5, args.node_num]
-        obs_space = [(args.node_num,51,4)]
+        action_space = args.node_num*5 #TODO: avoiding hard code, this should be args.pod_num
+        obs_space = (4,args.node_num,51) 
         self._build_agents(obs_space, action_space, args)
         # TODO: adapted action_selector
-        self.action_selector = action_REGISTRY['softmax_pos'](args)
+        # self.action_selector = action_REGISTRY['softmax_pos'](args)
         self.agent.apply(init_weights)
 
     def select_actions(self, ep_batch, eps):
         agent_outputs = self.forward(ep_batch)
-        chosen_actions = self.action_selector.select_action(agent_outputs)
-        try:
-            chosen_actions.cpu().numpy()
-        except:
-            import pdb; pdb.set_trace()
-        return  chosen_actions.cpu().numpy()
+        x = agent_outputs
+        x_min,_ = th.min(x,1)
+        x_min = x_min.unsqueeze(1)
+        x_max,_ = th.max(x,1)
+        x_max = x_max.unsqueeze(1)
+        x = th.sub(x,x_min)/(x_max-x_min)*9 # TODO: avoiding hard code, this should be the node num
+        actions = th.round(x).cpu().detach().numpy().astype(int)# 9 and 0 has relatively low possibility to get
+        return actions,agent_outputs.cpu().detach().numpy()
 
     def forward(self, ep_batch):
         agent_inputs = self._build_inputs(ep_batch)
@@ -48,7 +50,9 @@ class DeployMAC:
             # import pdb; pdb.set_trace()
             obs = th.Tensor(states['obs']).cuda()
             # feat = th.Tensor(states['feat']).cuda()
-            return [obs]
+            return obs
+        elif type(states) is list:
+            return states
         else:
             return states
 
