@@ -23,8 +23,8 @@ def _worker(remote, parent_remote, env_fn_wrapper):
             # elif cmd == 'seed':
             #     remote.send(env.seed(data))
             elif cmd == 'reset':
-                step, nodes, pods = data
-                observation = env.reset(step,nodes,pods)
+                step, nodes, pods, init_data = data
+                observation = env.reset(step,nodes,pods,init_data)
                 remote.send(observation)
             elif cmd == 'get_attr':
                 remote.send(env.get_attr(data))

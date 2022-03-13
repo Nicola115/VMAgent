@@ -152,7 +152,6 @@ class DeployEnvAlibaba(gym.Env):
         3. getNextData handle下一个五分钟内的请求，更改cluster状态
     '''
     def step(self, actions):
-        import pdb;pdb.set_trace()
         migration_cost = self._step(actions)
         self.handle_next_request()
         self.t += 300
