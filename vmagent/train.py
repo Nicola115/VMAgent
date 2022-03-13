@@ -13,6 +13,7 @@ from runx.logx import logx
 from hashlib import sha1
 import time
 import json
+import pandas as pd
 
 DATA_PATH = 'data/Huawei-East-1.csv'
 
@@ -52,6 +53,12 @@ def make_env(N, cpu, mem, allow_release, double_thr=1e10):
             with open('pods.json','r')as f:
                 pods = json.load(f)
             env = env_REGISTRY[args.env](nodes,pods)
+            return env
+        elif args.env=="deployenv_alibaba":
+            init_data = pd.read_csv('/data/clusterdata/cluster-trace-v2017/init_data_small.csv')
+            nodes_num = len(init_data['node_id'].unique())
+            pods_num = len(init_data['pod_id'].unique())
+            env = env_REGISTRY[args.env](nodes_num,pods_num,init_data)
             return env
     # set_global_seeds(seed)
     return _init
@@ -94,11 +101,6 @@ def run(envs, step_list, mac, mem, learner, eps, args):
 
 
 if __name__ == "__main__":
-    with open('nodes.json','r')as f:
-        nodes = json.load(f)
-    with open('pods.json','r')as f:
-        pods = json.load(f)
-
     # execution
     step_list = []
     # args.num_process is defined in default.yaml as 5
@@ -110,6 +112,12 @@ if __name__ == "__main__":
         double_thr = 1000
     else:
         double_thr = args.double_thr
+
+    init_data = pd.read_csv('/data/clusterdata/cluster-trace-v2017/init_data_small.csv')
+    nodes_num = len(init_data['node_id'].unique())
+    pods_num = len(init_data['pod_id'].unique())
+    args.node_num = nodes_num
+    args.pod_num = pods_num
 
     # SubprocVecEnv是一个多进程wrapper，使得原来的实现可以并发
     envs = SubprocVecEnv([make_env(args.N, args.cpu, args.mem, allow_release=(
@@ -128,6 +136,8 @@ if __name__ == "__main__":
             MAX_EPOCH * 0.25),  int(MAX_EPOCH * 0.9), MAX_EPOCH], [0.9, 0.5, 0.2, 0.2])
         if args.env=='deployenv':
             envs.reset(my_steps,nodes,pods)
+        elif args.env=='deployenv_alibaba':
+            envs.reset(my_steps,nodes_num,pods_num,init_data)
         else:
             envs.reset(my_steps) # set env.t and env.start to my_steps
 
@@ -137,8 +147,6 @@ if __name__ == "__main__":
 
         # start optimization
         for i in range(args.train_n):
-            # import pdb
-            # pdb.set_trace()
             batch = mem.sample(BATCH_SIZE)
             metrics = learner.train(batch)
 
@@ -150,7 +158,7 @@ if __name__ == "__main__":
         logx.metric('train', metrics, x)
 
         if x % args.test_interval == 0:
-            envs.reset(my_steps, nodes, pods)
+            envs.reset(my_steps, nodes_num, pods_num, init_data)
             val_return, val_lenth = run(
                 envs, my_steps, mac, mem, learner, 0, args)
             val_metric = {

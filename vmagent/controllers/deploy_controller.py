@@ -21,8 +21,9 @@ class DeployMAC:
     def __init__(self, args):
         self.args = args
         self.node_num = args.node_num
-        action_space = args.node_num*5 #TODO: avoiding hard code, this should be args.pod_num
-        obs_space = (4,args.node_num,51) 
+        self.pod_num = args.node_num
+        action_space = args.pod_num
+        obs_space = (2,args.node_num,args.pod_num)
         self._build_agents(obs_space, action_space, args)
         # TODO: adapted action_selector
         # self.action_selector = action_REGISTRY['softmax_pos'](args)
@@ -35,7 +36,7 @@ class DeployMAC:
         x_min = x_min.unsqueeze(1)
         x_max,_ = th.max(x,1)
         x_max = x_max.unsqueeze(1)
-        x = th.sub(x,x_min)/(x_max-x_min)*9 # TODO: avoiding hard code, this should be the node num
+        x = th.sub(x,x_min)/(x_max-x_min)*(self.node_num-1)
         actions = th.round(x).cpu().detach().numpy().astype(int)# 9 and 0 has relatively low possibility to get
         return actions,agent_outputs.cpu().detach().numpy()
 

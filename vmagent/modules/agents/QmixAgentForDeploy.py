@@ -15,9 +15,9 @@ class QmixAgentForDeploy(nn.Module):
         self.act_space = act_space
 
         self.features = nn.Sequential(
-            nn.Conv2d(self.state_space[0],32,kernel_size=2,stride=1),
+            nn.Conv2d(self.state_space[0],32,kernel_size=4,stride=2),
             nn.ReLU(),
-            nn.Conv2d(32,64,kernel_size=2,stride=1),
+            nn.Conv2d(32,64,kernel_size=4,stride=2),
             nn.ReLU(),
             nn.Conv2d(64,64,kernel_size=2,stride=1),
             nn.ReLU()
@@ -33,8 +33,10 @@ class QmixAgentForDeploy(nn.Module):
         return self.features(autograd.Variable(th.zeros(1,*self.state_space))).view(1,-1).size(-1)
     
     def forward(self, x):
-        x = th.transpose(x,2,4)
-        x = x.reshape(-1,x.shape[2],x.shape[3],x.shape[4])
+        # import pdb
+        # pdb.set_trace()
+        x = th.transpose(x,1,3)
+        x = x.reshape(-1,x.shape[1],x.shape[2],x.shape[3])
         x = self.features(x)
         x = x.view(x.size(0),-1)
         x = self.fc(x)

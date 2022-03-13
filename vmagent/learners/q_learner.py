@@ -197,9 +197,9 @@ class Critic(nn.Module):
         self.act_space = act_space
 
         self.features = nn.Sequential(
-            nn.Conv2d(self.state_space[0],32,kernel_size=2,stride=1),
+            nn.Conv2d(self.state_space[0],32,kernel_size=4,stride=2),
             nn.ReLU(),
-            nn.Conv2d(32,64,kernel_size=2,stride=1),
+            nn.Conv2d(32,64,kernel_size=4,stride=2),
             nn.ReLU(),
             nn.Conv2d(64,64,kernel_size=2,stride=1),
             nn.ReLU()
@@ -223,8 +223,9 @@ class Critic(nn.Module):
         return self.features(autograd.Variable(th.zeros(1,*self.state_space))).view(1,-1).size(-1)
     
     def forward(self, state, action):
-        x = th.transpose(state,2,4)
-        x = x.reshape(-1,x.shape[2],x.shape[3],x.shape[4])
+        import pdb; pdb.set_trace()
+        x = th.transpose(state,1,3)
+        x = x.reshape(-1,x.shape[1],x.shape[2],x.shape[3])
         x = self.features(x)
         x = x.view(x.size(0),-1)
         x = self.fc(x)
@@ -245,7 +246,7 @@ class QmixLearner:
         self.actor_optimiser = Adam(self.actor.parameters(), lr=args.lr)
         self.target_actor_param = list(self.target_actor.parameters())
 
-        self.critic = Critic((4,51,10),50).cuda() # TODO: avoiding hardcode, here should be state_space and act_space
+        self.critic = Critic((2,args.node_num,args.pod_num),args.pod_num).cuda() # TODO: avoiding hardcode, here should be state_space and act_space
         self.target_critic = copy.deepcopy(self.critic)
         self.critic_optimiser = Adam(self.critic.parameters(), lr=args.lr)
         self.target_critic_param = list(self.target_critic.parameters())
