@@ -223,7 +223,7 @@ class Critic(nn.Module):
         return self.features(autograd.Variable(th.zeros(1,*self.state_space))).view(1,-1).size(-1)
     
     def forward(self, state, action):
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         x = th.transpose(state,1,3)
         x = x.reshape(-1,x.shape[1],x.shape[2],x.shape[3])
         x = self.features(x)
@@ -307,7 +307,8 @@ class QmixLearner:
             self._update_targets()
             self.learn_cnt = 0
         return {
-            'critic_loss': loss_for_critic
+            'critic_loss': loss_for_critic.detach().cpu(),
+            'actor_loss': loss_for_actor.detach().cpu()
         }
 
     def _update_targets(self):

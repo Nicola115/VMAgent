@@ -154,7 +154,7 @@ if __name__ == "__main__":
         metrics['eps'] = eps
         metrics['tot_reward'] = train_rew.mean()
         metrics['tot_len'] = train_len.mean()
-        print(f'Epoch {x}/{MAX_EPOCH}; total_reward: {train_rew.mean()}, total_len: {train_len.mean()} ')
+        print(f'Epoch {x}/{MAX_EPOCH}; total_reward: {train_rew.mean()}, total_len: {train_len.mean()}, critic_loss: {metrics["critic_loss"]}, actor_loss: {metrics["actor_loss"]}')
         logx.metric('train', metrics, x)
 
         if x % args.test_interval == 0:
