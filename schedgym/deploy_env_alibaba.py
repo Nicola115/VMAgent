@@ -87,6 +87,7 @@ class Cluster():
             from_node = self.pods[pod_index].current_node
             self.nodes[from_node].pods.remove(pod_index)
             self.nodes[pod_action].pods.add(pod_index)
+            self.pods[pod_index].current_node = pod_action
             cost+=1
         return cost
 
