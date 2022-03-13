@@ -116,13 +116,16 @@ class SubprocVecEnv(VecEnv):
         self.alives = self.alives2.copy()
 
 
-    def reset(self, steps, nodes=None, pods=None):
+    def reset(self, steps, nodes=None, pods=None,init_data=None):
         if type(steps) is int:
             for remote in self.remotes:
                 remote.send(('reset', (steps, nodes, pods)))
-        else:
+        elif init_data is None:
             for remote, step in zip(self.remotes, steps):
                 remote.send(('reset', (step, nodes, pods)))
+        else:
+            for remote, step in zip(self.remotes, steps):
+                remote.send(('reset', (step, nodes, pods, init_data)))
         obs = [remote.recv() for remote in self.remotes]
         self.alives = np.array([True for i in range(self.n_envs)])
         self.alives2 = np.array([True for i in range(self.n_envs)])
