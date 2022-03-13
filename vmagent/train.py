@@ -105,7 +105,7 @@ if __name__ == "__main__":
     step_list = []
     # args.num_process is defined in default.yaml as 5
     for i in range(args.num_process):
-        step_list.append(np.random.randint(1000, 9999))
+        step_list.append(np.random.randint(0, 143))
     my_steps = np.array(step_list) # my_step is a 5 items' list, contains 5 random int from 1000-9999 
 
     if args.double_thr is None:
