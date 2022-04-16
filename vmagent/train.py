@@ -15,8 +15,6 @@ import time
 import json
 import pandas as pd
 
-DATA_PATH = 'data/Huawei-East-1.csv'
-
 parser = argparse.ArgumentParser(description='Sched More Servers')
 parser.add_argument('--env', type=str)
 parser.add_argument('--alg', type=str)
@@ -60,6 +58,12 @@ def make_env(N, cpu, mem, allow_release, double_thr=1e10):
             pods_num = len(init_data['pod_id'].unique())
             env = env_REGISTRY[args.env](nodes_num,pods_num,init_data)
             return env
+        elif args.env=="deployenv_monitor_data":
+            init_data = pd.read_csv('/data/monitor_init_data.csv')
+            nodes_num = len(init_data['node_id'].unique())
+            pods_num = len(init_data['pod_id'].unique())
+            env = env_REGISTRY[args.env](nodes_num,pods_num,init_data)
+            return env
     # set_global_seeds(seed)
     return _init
 
@@ -72,7 +76,6 @@ def run(envs, step_list, mac, mem, learner, eps, args):
     while True:
         # get action
         step += 1
-        # print(step)
         envs.update_alives()
 
         alives = envs.get_alives().copy()
@@ -89,8 +92,9 @@ def run(envs, step_list, mac, mem, learner, eps, args):
             state = {'obs': obs, 'feat': feat, 'avail': avail}
         
         action, raw_action = mac.select_actions(state, eps)
-        
+
         action, next_obs, reward, done = envs.step(action)
+
         stop_idxs[alives] += 1
 
         tot_reward[alives] += reward
@@ -113,7 +117,7 @@ if __name__ == "__main__":
     else:
         double_thr = args.double_thr
 
-    init_data = pd.read_csv('/data/clusterdata/cluster-trace-v2017/init_data_small.csv')
+    init_data = pd.read_csv('/data/monitor_init_data.csv')
     nodes_num = len(init_data['node_id'].unique())
     pods_num = len(init_data['pod_id'].unique())
     args.node_num = nodes_num
@@ -136,7 +140,7 @@ if __name__ == "__main__":
             MAX_EPOCH * 0.25),  int(MAX_EPOCH * 0.9), MAX_EPOCH], [0.9, 0.5, 0.2, 0.2])
         if args.env=='deployenv':
             envs.reset(my_steps,nodes,pods)
-        elif args.env=='deployenv_alibaba':
+        elif args.env=='deployenv_alibaba' or args.env=='deployenv_monitor_data':
             envs.reset(my_steps,nodes_num,pods_num,init_data)
         else:
             envs.reset(my_steps) # set env.t and env.start to my_steps

@@ -1,0 +1,3 @@
+mac: 'deploy_gumbelsoftmax_mac'
+learner: 'qmix_learner_gumbelsoftmax'
+agent: 'QmixAgentForDeployGumbelSoftmax'

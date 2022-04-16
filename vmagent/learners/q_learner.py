@@ -1,10 +1,12 @@
 import copy
 import torch as th
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.optim import RMSprop, Adam
 import numpy as np
 import torch.autograd as autograd
 import time
+from einops import rearrange
 
 class QLearner:
     def __init__(self, mac, args):
@@ -197,9 +199,9 @@ class Critic(nn.Module):
         self.act_space = act_space
 
         self.features = nn.Sequential(
-            nn.Conv2d(self.state_space[0],32,kernel_size=4,stride=2),
+            nn.Conv2d(self.state_space[0],32,kernel_size=2,stride=1),
             nn.ReLU(),
-            nn.Conv2d(32,64,kernel_size=4,stride=2),
+            nn.Conv2d(32,64,kernel_size=2,stride=1),
             nn.ReLU(),
             nn.Conv2d(64,64,kernel_size=2,stride=1),
             nn.ReLU()
@@ -246,7 +248,161 @@ class QmixLearner:
         self.actor_optimiser = Adam(self.actor.parameters(), lr=args.lr)
         self.target_actor_param = list(self.target_actor.parameters())
 
-        self.critic = Critic((2,args.node_num,args.pod_num),args.pod_num).cuda() # TODO: avoiding hardcode, here should be state_space and act_space
+        self.critic = Critic((2,args.node_num*10,args.pod_num),args.pod_num).cuda() # TODO: avoiding hardcode, here should be state_space and act_space
+        self.target_critic = copy.deepcopy(self.critic)
+        self.critic_optimiser = Adam(self.critic.parameters(), lr=args.lr)
+        self.target_critic_param = list(self.target_critic.parameters())
+
+        self.learn_cnt= 0
+        self.tau = self.args.tau
+        self.gpu_enable = True
+
+
+    def train(self, batch):
+        # 1. get history observation, action, reward and next observation
+        obs = batch['obs']
+        action_list = batch['action']
+        reward_list = batch['reward']
+        next_obs = batch['next_obs']
+        mask_list = 1 - batch['done']
+        obs = th.FloatTensor(obs)
+        a = th.FloatTensor(action_list)
+        rew = th.FloatTensor(reward_list)
+        mask = th.LongTensor(mask_list)
+        next_obs = th.FloatTensor(next_obs)
+        
+        if self.gpu_enable:
+            obs = obs.cuda()
+            a = a.cuda()
+            rew = rew.cuda()
+            mask = mask.cuda()
+            next_obs = next_obs.cuda()
+
+        # 2. update critic
+        critic_out = self.critic.forward(obs,a)
+        target_actor_out = self.target_actor.forward(next_obs)
+        target_critic_out = self.target_critic.forward(next_obs,target_actor_out)
+        y = rew + self.args.gamma * mask * target_critic_out
+        td_error = (critic_out - y.detach())
+        loss_for_critic = (td_error**2).sum() / obs.shape[0]
+        self.critic_optimiser.zero_grad()
+        loss_for_critic.backward()
+        self.critic_optimiser.step()
+
+        # 3. freeze critic and update actor
+        for param in self.critic.parameters():
+            param.requires_grad = False
+
+        actor_out = self.actor.forward(obs)
+        freeze_critic_out = self.critic.forward(obs, actor_out)
+        loss_for_actor = - freeze_critic_out.sum() / obs.shape[0] #TODO: this loss function can be replaced by gan loss
+        self.actor_optimiser.zero_grad()
+        loss_for_actor.backward()
+        self.actor_optimiser.step()
+
+        for param in self.critic.parameters():
+            param.requires_grad = True
+
+        # 4. if meets update target interval,update target networks weights
+        self.learn_cnt += 1
+        if  self.learn_cnt / self.args.target_update_interval >= 1.0:
+            self._update_targets()
+            self.learn_cnt = 0
+        return {
+            'critic_loss': loss_for_critic.detach().cpu(),
+            'actor_loss': loss_for_actor.detach().cpu()
+        }
+
+    def _update_targets(self):
+        for target_param, local_param in zip(self.target_critic.parameters(), self.critic.parameters()):
+            target_param.data.copy_(self.tau*local_param.data + (1.0-self.tau)*target_param.data)
+
+        for target_param, local_param in zip(self.target_actor.parameters(), self.actor.parameters()):
+            target_param.data.copy_(self.tau*local_param.data + (1.0-self.tau)*target_param.data)
+
+    def cuda(self):
+        self.critic.cuda()
+        self.target_critic.cuda()
+        self.actor.cuda()
+        self.target_actor.cuda()
+
+    def save_models(self, path):
+        self.actor.save_models(path)
+        th.save(self.actor_optimiser.state_dict(), "{}/opt.th".format(path))
+
+    def load_models(self, path):
+        self.actor.load_models(path)
+        # Not quite right but I don't want to save target networks
+        self.target_actor.load_models(path)
+        self.actor_optimiser.load_state_dict(th.load("{}/opt.th".format(path), map_location=lambda storage, loc: storage))
+
+class CriticGumbelSoftmax(nn.Module):
+    def __init__(self, state_space, act_space):
+        super(CriticGumbelSoftmax, self).__init__()
+        self.state_space = state_space
+        self.resource_num = state_space[0]
+        self.node_num = state_space[1]/10
+        self.pod_num = state_space[2]
+        self.act_space = act_space
+        assert self.act_space == self.pod_num*self.node_num,f'wrong act_space: {self.act_space}, pod_num={self.pod_num}, node_num = {self.node_num}'
+
+
+        self.features = nn.Sequential(
+            nn.Conv2d(self.resource_num,32,kernel_size=2,stride=1),
+            nn.ReLU(),
+            nn.Conv2d(32,64,kernel_size=2,stride=1),
+            nn.ReLU(),
+            nn.Conv2d(64,64,kernel_size=2,stride=1),
+            nn.ReLU()
+        )
+
+        self.fc = nn.Sequential(
+            nn.Linear(self.feature_size(),512),
+            nn.ReLU(),
+            nn.Linear(512,self.act_space)
+        )
+
+        self.fc2 = nn.Sequential(
+            nn.Linear(2*self.act_space, 512),
+            nn.ReLU(),
+            nn.Linear(512,128),
+            nn.ReLU(),
+            nn.Linear(128,1)
+        )
+
+    def feature_size(self):
+        return self.features(autograd.Variable(th.zeros(1,*self.state_space))).view(1,-1).size(-1)
+    
+    def forward(self, state, action):
+        # x = (5, node_num*10,pod_num,resource_type)
+        x = state
+        assert x.dim()==4 or x.dim()==5,f'{x.dim()}'
+        if x.dim() == 5:
+            x = rearrange(x, 'b1 b2 n p c -> (b1 b2) c p n')
+        elif x.dim() == 4:
+            x = rearrange(x, 'b n p c -> b c p n')
+            
+        x = self.features(x)
+        x = x.view(x.size(0),-1)
+        x = self.fc(x)
+        logits = rearrange(x, 'b (p n) -> b p n',p=self.pod_num)
+        x = F.gumbel_softmax(logits, tau=1, hard=False)
+
+        x = th.cat((x,action),1)
+        x = rearrange(x,'b p n -> b (p n)')
+        x = self.fc2(x)
+        return x
+
+class QmixLearnerGumbelSoftmax:
+    def __init__(self, actor, args):
+        self.args = args
+
+        self.actor = actor
+        self.target_actor = copy.deepcopy(actor)
+        self.actor_optimiser = Adam(self.actor.parameters(), lr=args.lr)
+        self.target_actor_param = list(self.target_actor.parameters())
+
+        self.critic = CriticGumbelSoftmax((2,args.node_num*10,args.pod_num),args.pod_num*args.node_num).cuda() # TODO: avoiding hardcode, here should be state_space and act_space
         self.target_critic = copy.deepcopy(self.critic)
         self.critic_optimiser = Adam(self.critic.parameters(), lr=args.lr)
         self.target_critic_param = list(self.target_critic.parameters())

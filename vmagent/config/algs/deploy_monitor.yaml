@@ -1,0 +1,3 @@
+mac: 'deploy_monitor_mac'
+learner: 'qmix_learner'
+agent: 'QmixAgentForDeploy'

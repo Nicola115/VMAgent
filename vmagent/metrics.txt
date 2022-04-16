@@ -1,0 +1,96 @@
+Epoch 0/100; total_reward: -8843.319999999994, total_len: 54.4, critic_loss: 1684911.375, actor_loss: 5573.990234375               
+Epoch 0/100; lasted 0 hour, 0 min, 16 sec                                                                                         
+Epoch 1/100; total_reward: -4190.359999999995, total_len: 54.4, critic_loss: 9536946176.0, actor_loss: 488141.4375                 Epoch 2/100; total_reward: -4149.039999999999, total_len: 54.4, critic_loss: 1075375898624.0, actor_loss: 7171.47021484375         Epoch 3/100; total_reward: -4170.680000000003, total_len: 54.4, critic_loss: 40682610688.0, actor_loss: -28979.76171875           Epoch 4/100; total_reward: -4214.480000000001, total_len: 54.4, critic_loss: 525766131712.0, actor_loss: 193382.34375             Epoch 5/100; total_reward: -4210.200000000002, total_len: 54.4, critic_loss: 1024526516224.0, actor_loss: 148418.625               Epoch 5/100; lasted 0 hour, 1 min, 13 sec                                                                                         Epoch 6/100; total_reward: -4236.64, total_len: 54.4, critic_loss: 227118366720.0, actor_loss: -7247.2470703125
+Epoch 7/100; total_reward: -4232.4, total_len: 54.4, critic_loss: 673162240.0, actor_loss: -8028.0810546875
+Epoch 8/100; total_reward: -4234.4, total_len: 54.4, critic_loss: 915271360.0, actor_loss: -2497.56396484375
+Epoch 9/100; total_reward: -4244.399999999999, total_len: 54.4, critic_loss: 95698736.0, actor_loss: 2062.2626953125
+Epoch 10/100; total_reward: -4263.1600000000035, total_len: 54.4, critic_loss: 84799824.0, actor_loss: 1278.36962890625
+Epoch 10/100; lasted 0 hour, 2 min, 8 sec
+Epoch 11/100; total_reward: -4212.160000000002, total_len: 54.4, critic_loss: 30599306.0, actor_loss: 150.7220458984375
+Epoch 12/100; total_reward: -4210.760000000001, total_len: 54.4, critic_loss: 974846.5, actor_loss: -628.787353515625
+Epoch 13/100; total_reward: -4191.519999999995, total_len: 54.4, critic_loss: 5572872.5, actor_loss: 96.87258911132812
+Epoch 14/100; total_reward: -4212.640000000001, total_len: 54.4, critic_loss: 985980736.0, actor_loss: -189.58706665039062
+Epoch 15/100; total_reward: -4212.640000000001, total_len: 54.4, critic_loss: 3547588.0, actor_loss: -401.28424072265625
+Epoch 15/100; lasted 0 hour, 3 min, 3 sec
+Epoch 16/100; total_reward: -4191.279999999995, total_len: 54.4, critic_loss: 7233829.0, actor_loss: -264.40924072265625
+Epoch 17/100; total_reward: -4212.640000000001, total_len: 54.4, critic_loss: 6817778.5, actor_loss: 246.8716278076172
+Epoch 18/100; total_reward: -4211.640000000001, total_len: 54.4, critic_loss: 1083546.0, actor_loss: 374.4286193847656
+Epoch 19/100; total_reward: -4209.640000000001, total_len: 54.4, critic_loss: 3191038.0, actor_loss: 100.21066284179688
+Epoch 20/100; total_reward: -4217.280000000001, total_len: 54.4, critic_loss: 588322.0, actor_loss: -40.50786590576172
+Epoch 20/100; lasted 0 hour, 4 min, 2 sec
+Epoch 21/100; total_reward: -4233.4, total_len: 54.4, critic_loss: 5145287.0, actor_loss: 184.9072265625
+Epoch 22/100; total_reward: -4245.799999999998, total_len: 54.4, critic_loss: 559472.125, actor_loss: 609.9232177734375
+Epoch 23/100; total_reward: -4258.719999999998, total_len: 54.4, critic_loss: 4710143.5, actor_loss: 229.07611083984375
+Epoch 24/100; total_reward: -4254.159999999998, total_len: 54.4, critic_loss: 3130654.5, actor_loss: 201.1306915283203
+Epoch 25/100; total_reward: -4253.159999999998, total_len: 54.4, critic_loss: 7117443.0, actor_loss: 760.2269287109375
+Epoch 25/100; lasted 0 hour, 4 min, 58 sec
+Epoch 26/100; total_reward: -4252.159999999998, total_len: 54.4, critic_loss: 4603245.5, actor_loss: 213.30364990234375
+Epoch 27/100; total_reward: -4253.159999999998, total_len: 54.4, critic_loss: 1581721.875, actor_loss: 298.989501953125
+Epoch 28/100; total_reward: -4253.479999999999, total_len: 54.4, critic_loss: 1113440.5, actor_loss: -73.62860107421875
+Epoch 29/100; total_reward: -4275.920000000005, total_len: 54.4, critic_loss: 1846844.75, actor_loss: 276.77996826171875
+Epoch 30/100; total_reward: -4253.159999999998, total_len: 54.4, critic_loss: 666039.375, actor_loss: 539.8333740234375
+Epoch 30/100; lasted 0 hour, 5 min, 55 sec
+Epoch 31/100; total_reward: -4252.159999999998, total_len: 54.4, critic_loss: 267046240.0, actor_loss: -1915.2344970703125
+Epoch 32/100; total_reward: -4252.959999999998, total_len: 54.4, critic_loss: 8147781632.0, actor_loss: -786.460693359375
+Epoch 33/100; total_reward: -4255.159999999998, total_len: 54.4, critic_loss: 3299081472.0, actor_loss: 18550.3828125
+Epoch 34/100; total_reward: -4234.4, total_len: 54.4, critic_loss: 9613948928.0, actor_loss: 10970.23046875
+Epoch 35/100; total_reward: -4255.159999999998, total_len: 54.4, critic_loss: 366467712.0, actor_loss: 1822.0185546875
+Epoch 35/100; lasted 0 hour, 6 min, 52 sec
+Epoch 36/100; total_reward: -4232.4, total_len: 54.4, critic_loss: 624265.5625, actor_loss: 86.23851776123047
+Epoch 37/100; total_reward: -4233.4, total_len: 54.4, critic_loss: 739235.0625, actor_loss: -81.8214340209961
+Epoch 38/100; total_reward: -4221.72, total_len: 54.4, critic_loss: 2505412.25, actor_loss: -142.80795288085938
+Epoch 39/100; total_reward: -4228.92, total_len: 54.4, critic_loss: 3911474.5, actor_loss: -141.06198120117188
+Epoch 40/100; total_reward: -4265.840000000002, total_len: 54.4, critic_loss: 3920416.5, actor_loss: -86.98210144042969
+Epoch 40/100; lasted 0 hour, 7 min, 49 sec
+Epoch 41/100; total_reward: -4242.08, total_len: 54.4, critic_loss: 1789588.0, actor_loss: 13.128861427307129
+Epoch 42/100; total_reward: -4242.0, total_len: 54.4, critic_loss: 167886.84375, actor_loss: 152.72457885742188
+Epoch 43/100; total_reward: -4246.4, total_len: 54.4, critic_loss: 393731.03125, actor_loss: 194.0901641845703
+Epoch 44/100; total_reward: -4224.640000000001, total_len: 54.4, critic_loss: 752766.1875, actor_loss: 192.40655517578125
+Epoch 45/100; total_reward: -4277.920000000005, total_len: 54.4, critic_loss: 636821.125, actor_loss: 170.2255096435547
+Epoch 45/100; lasted 0 hour, 8 min, 45 sec
+Epoch 46/100; total_reward: -4253.319999999999, total_len: 54.4, critic_loss: 372895.0, actor_loss: 140.8437957763672
+Epoch 47/100; total_reward: -4235.32, total_len: 54.4, critic_loss: 137346.421875, actor_loss: 110.597900390625
+Epoch 48/100; total_reward: -4260.16, total_len: 54.4, critic_loss: 13066.7822265625, actor_loss: 80.99919128417969               Epoch 49/100; total_reward: -4226.320000000001, total_len: 54.4, critic_loss: 4642.07470703125, actor_loss: 65.42475891113281     Epoch 50/100; total_reward: -4224.600000000001, total_len: 54.4, critic_loss: 13268.80859375, actor_loss: 62.22444534301758       Epoch 50/100; lasted 0 hour, 9 min, 40 sec                                                                                         Epoch 51/100; total_reward: -4243.399999999999, total_len: 54.4, critic_loss: 19835.26171875, actor_loss: 61.771018981933594       Epoch 52/100; total_reward: -4223.640000000001, total_len: 54.4, critic_loss: 21669.669921875, actor_loss: 62.25472640991211       Epoch 53/100; total_reward: -4213.880000000002, total_len: 54.4, critic_loss: 20223.51953125, actor_loss: 63.177894592285156       Epoch 54/100; total_reward: -4241.879999999999, total_len: 54.4, critic_loss: 21441.765625, actor_loss: 64.0440673828125           Epoch 55/100; total_reward: -4243.399999999999, total_len: 54.4, critic_loss: 22127.869140625, actor_loss: 63.96127700805664       Epoch 55/100; lasted 0 hour, 10 min, 38 sec                                                                                       Epoch 56/100; total_reward: -4257.400000000003, total_len: 54.4, critic_loss: 25172.697265625, actor_loss: 65.89132690429688       Epoch 57/100; total_reward: -4195.239999999997, total_len: 54.4, critic_loss: 20797.447265625, actor_loss: 69.65101623535156       Epoch 58/100; total_reward: -4186.479999999998, total_len: 54.4, critic_loss: 19284.4765625, actor_loss: 69.61516571044922         Epoch 59/100; total_reward: -4212.240000000001, total_len: 54.4, critic_loss: 29710.455078125, actor_loss: 64.24020385742188       Epoch 60/100; total_reward: -4136.44, total_len: 54.4, critic_loss: 50158.5, actor_loss: 54.960636138916016                       Epoch 60/100; lasted 0 hour, 11 min, 36 sec                                                                                       Epoch 61/100; total_reward: -4210.800000000001, total_len: 54.4, critic_loss: 90784.0390625, actor_loss: 45.433528900146484       Epoch 62/100; total_reward: -4244.399999999999, total_len: 54.4, critic_loss: 140612.5, actor_loss: 36.252445220947266             Epoch 63/100; total_reward: -4219.160000000001, total_len: 54.4, critic_loss: 167620.546875, actor_loss: 31.876909255981445
+Epoch 64/100; total_reward: -4219.960000000001, total_len: 54.4, critic_loss: 169274.359375, actor_loss: 32.92244338989258
+Epoch 65/100; total_reward: -4242.399999999999, total_len: 54.4, critic_loss: 156710.6875, actor_loss: 36.840797424316406
+Epoch 65/100; lasted 0 hour, 12 min, 31 sec
+Epoch 66/100; total_reward: -4265.1600000000035, total_len: 54.4, critic_loss: 135697.578125, actor_loss: 43.57168960571289
+Epoch 67/100; total_reward: -4255.159999999998, total_len: 54.4, critic_loss: 108844.046875, actor_loss: 52.2612419128418
+Epoch 68/100; total_reward: -4233.719999999999, total_len: 54.4, critic_loss: 101674.78125, actor_loss: 62.11101531982422
+Epoch 69/100; total_reward: -4256.159999999998, total_len: 54.4, critic_loss: 96706.90625, actor_loss: 69.97278594970703
+Epoch 70/100; total_reward: -4256.159999999998, total_len: 54.4, critic_loss: 67817.359375, actor_loss: 82.41368103027344
+Epoch 70/100; lasted 0 hour, 13 min, 29 sec
+Epoch 71/100; total_reward: -4244.399999999999, total_len: 54.4, critic_loss: 7562.4130859375, actor_loss: 109.72632598876953
+Epoch 72/100; total_reward: -4234.4, total_len: 54.4, critic_loss: 49434.91796875, actor_loss: 125.70476531982422
+Epoch 73/100; total_reward: -4264.720000000003, total_len: 54.4, critic_loss: 145467.6875, actor_loss: 119.59461975097656
+Epoch 74/100; total_reward: -4263.1600000000035, total_len: 54.4, critic_loss: 101400.6640625, actor_loss: 95.14690399169922
+Epoch 75/100; total_reward: -4243.399999999999, total_len: 54.4, critic_loss: 15964.23828125, actor_loss: 64.02013397216797
+Epoch 75/100; lasted 0 hour, 14 min, 27 sec
+Epoch 76/100; total_reward: -4224.08, total_len: 54.4, critic_loss: 15499.16015625, actor_loss: 44.45297622680664
+Epoch 77/100; total_reward: -4233.839999999999, total_len: 54.4, critic_loss: 79126.234375, actor_loss: 44.58554458618164
+Epoch 78/100; total_reward: -4240.76, total_len: 54.4, critic_loss: 81089.5859375, actor_loss: 56.95974349975586
+Epoch 79/100; total_reward: -4242.959999999998, total_len: 54.4, critic_loss: 34720.453125, actor_loss: 74.22721862792969
+Epoch 80/100; total_reward: -4235.5199999999995, total_len: 54.4, critic_loss: 2280.94189453125, actor_loss: 89.82425689697266
+Epoch 80/100; lasted 0 hour, 15 min, 24 sec
+Epoch 81/100; total_reward: -4244.399999999999, total_len: 54.4, critic_loss: 4945.703125, actor_loss: 98.51028442382812
+Epoch 82/100; total_reward: -4251.360000000002, total_len: 54.4, critic_loss: 25574.884765625, actor_loss: 102.18113708496094
+Epoch 83/100; total_reward: -4236.120000000001, total_len: 54.4, critic_loss: 39955.51171875, actor_loss: 100.12759399414062
+Epoch 84/100; total_reward: -4233.4, total_len: 54.4, critic_loss: 32498.228515625, actor_loss: 93.79489135742188
+Epoch 85/100; total_reward: -4254.159999999998, total_len: 54.4, critic_loss: 14212.21484375, actor_loss: 84.50041961669922
+Epoch 85/100; lasted 0 hour, 16 min, 18 sec
+Epoch 86/100; total_reward: -4211.960000000001, total_len: 54.4, critic_loss: 1797.8948974609375, actor_loss: 76.21844482421875
+Epoch 87/100; total_reward: -4256.159999999998, total_len: 54.4, critic_loss: 4739.5478515625, actor_loss: 65.05548095703125
+Epoch 88/100; total_reward: -4255.159999999998, total_len: 54.4, critic_loss: 21135.86328125, actor_loss: 57.431556701660156
+Epoch 89/100; total_reward: -4252.159999999999, total_len: 54.4, critic_loss: 21898.603515625, actor_loss: 58.56610870361328
+Epoch 90/100; total_reward: -4251.359999999999, total_len: 54.4, critic_loss: 14545.1025390625, actor_loss: 62.96145248413086
+Epoch 90/100; lasted 0 hour, 17 min, 15 sec
+Epoch 91/100; total_reward: -4252.759999999999, total_len: 54.4, critic_loss: 7767.9267578125, actor_loss: 67.82878875732422
+Epoch 92/100; total_reward: -4237.08, total_len: 54.4, critic_loss: 3001.43359375, actor_loss: 72.22079467773438
+Epoch 93/100; total_reward: -4233.4, total_len: 54.4, critic_loss: 565.101806640625, actor_loss: 76.10298156738281
+Epoch 94/100; total_reward: -4254.199999999999, total_len: 54.4, critic_loss: 0.9275025129318237, actor_loss: 79.14857482910156
+Epoch 95/100; total_reward: -4255.159999999998, total_len: 54.4, critic_loss: 364.134765625, actor_loss: 81.06504821777344
+Epoch 95/100; lasted 0 hour, 18 min, 13 sec
+Epoch 96/100; total_reward: -4255.159999999998, total_len: 54.4, critic_loss: 902.1875, actor_loss: 81.70911407470703
+Epoch 97/100; total_reward: -4255.159999999998, total_len: 54.4, critic_loss: 963.1691284179688, actor_loss: 81.00191497802734
+Epoch 98/100; total_reward: -4262.760000000002, total_len: 54.4, critic_loss: 419.32342529296875, actor_loss: 79.35359191894531
+Epoch 99/100; total_reward: -4234.5199999999995, total_len: 54.4, critic_loss: 72.04862976074219, actor_loss: 77.1022720336914
