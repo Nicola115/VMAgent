@@ -19,10 +19,10 @@ import math
 NODE_CPU = 4
 NODE_OVER_UTILIZED_THRESHOLD = 0.8
 NODE_UNDER_UTILIZED_THRESHOLD = 0.2
-NODE_OVER_UTILIZED_PENALTY = 0.6
-NODE_UNDER_UTILIZED_PENALTY = 0.4
+NODE_OVER_UTILIZED_PENALTY = 1
+NODE_UNDER_UTILIZED_PENALTY = 1
 POD_UNDER_REQUESTED_PENALTY = 1
-MIGRATION_COST_PENALTY = 0.8
+MIGRATION_COST_PENALTY = 0.5
 
 df = pd.read_csv('/data/monitor_usage_data.csv')
 df = df.assign(used_cpu=lambda x: x.used_cpu/NODE_CPU)
@@ -103,12 +103,12 @@ class Cluster():
         for t in range(step,step+300,30):
             for node in self.nodes:
                 node_data = []
+                for i in range(self.pods_num):
+                    node_data.append([0.0,0.0])
                 for pod_index in node.pods:
                     pod_data = self.data[(self.data['start_time']==t) & (self.data['pod_id']==pod_index)]
                     assert len(pod_data)==1, f'{pod_data},{self.data},{t}'
-                    node_data.append([float(pod_data['used_cpu'].values),float(pod_data['used_mem'].values)])
-                for i in range(self.pods_num-len(node.pods)):
-                    node_data.append([0.0,0.0])
+                    node_data[pod_index] = [float(pod_data['used_cpu'].values),float(pod_data['used_mem'].values)]
                 ret.append(node_data)
         ret_np = np.array(ret)
         assert ret_np.shape==(10*self.nodes_num,self.pods_num,2)
