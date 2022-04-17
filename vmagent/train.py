@@ -92,7 +92,7 @@ def run(envs, step_list, mac, mem, learner, eps, args):
             state = {'obs': obs, 'feat': feat, 'avail': avail}
         
         action, raw_action = mac.select_actions(state, eps)
-
+        
         action, next_obs, reward, done = envs.step(action)
 
         stop_idxs[alives] += 1
