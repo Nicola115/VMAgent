@@ -386,7 +386,7 @@ class CriticGumbelSoftmax(nn.Module):
         x = x.view(x.size(0),-1)
         x = self.fc(x)
         logits = rearrange(x, 'b (p n) -> b p n',p=self.pod_num)
-        x = F.gumbel_softmax(logits, tau=1, hard=False)
+        x = F.gumbel_softmax(logits, tau=1, hard=True)
 
         x = th.cat((x,action),1)
         x = rearrange(x,'b p n -> b (p n)')
@@ -436,7 +436,9 @@ class QmixLearnerGumbelSoftmax:
         critic_out = self.critic.forward(obs,a)
         target_actor_out = self.target_actor.forward(next_obs)
         target_critic_out = self.target_critic.forward(next_obs,target_actor_out)
+        target_critic_out = rearrange(target_critic_out, 'b () -> b')
         y = rew + self.args.gamma * mask * target_critic_out
+        y = rearrange(y, 'b -> b ()')
         td_error = (critic_out - y.detach())
         loss_for_critic = (td_error**2).sum() / obs.shape[0]
         self.critic_optimiser.zero_grad()
@@ -450,9 +452,10 @@ class QmixLearnerGumbelSoftmax:
         actor_out = self.actor.forward(obs)
         freeze_critic_out = self.critic.forward(obs, actor_out)
         loss_for_actor = - freeze_critic_out.sum() / obs.shape[0] #TODO: this loss function can be replaced by gan loss
-        self.actor_optimiser.zero_grad()
-        loss_for_actor.backward()
-        self.actor_optimiser.step()
+        if loss_for_actor>0:
+            self.actor_optimiser.zero_grad()
+            loss_for_actor.backward()
+            self.actor_optimiser.step()
 
         for param in self.critic.parameters():
             param.requires_grad = True
@@ -466,6 +469,7 @@ class QmixLearnerGumbelSoftmax:
             'critic_loss': loss_for_critic.detach().cpu(),
             'actor_loss': loss_for_actor.detach().cpu()
         }
+        
 
     def _update_targets(self):
         for target_param, local_param in zip(self.target_critic.parameters(), self.critic.parameters()):

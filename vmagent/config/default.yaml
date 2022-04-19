@@ -5,13 +5,13 @@ num_process: 5
 
 # Learning Options
 learn_interval: 1
-train_n: 1
+train_n: 100
 max_epoch: 100
 batch_size: 1024
 
 lr: 0.005
 gamma: 0.95
-tau: 0.001
+tau: 0.1
 target_update_interval: 1
 
 memory: 'replay'

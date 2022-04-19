@@ -11,6 +11,7 @@ import torch.nn as nn
 from modules.agents import REGISTRY as agent_REGISTRY
 from components.action_selectors import REGISTRY as action_REGISTRY
 import numpy as np
+import random
 
 def init_weights(m):
         if type(m) == nn.Linear or type(m) == nn.Conv2d:
@@ -29,9 +30,23 @@ class DeployGumbelSoftmaxMAC:
 
     def select_actions(self, ep_batch, eps):
         agent_outputs = self.forward(ep_batch)
+        return_action = agent_outputs.cpu().detach().numpy()
         actions = th.argmax(agent_outputs,dim=2)
-        actions = actions.cpu().detach().numpy().astype(int)# 9 and 0 has relatively low possibility to get
-        return actions,agent_outputs.cpu().detach().numpy()
+        actions = actions.cpu().detach().numpy().astype(int)
+        if random.random()<0.2:
+            # import pdb;pdb.set_trace()
+            random_actions = np.zeros(actions.shape,dtype=int)
+            random_return_action = np.zeros(return_action.shape)
+            for i in range(len(actions)):
+                random_actions[i] = np.random.randint(2,size=6)
+                for j in range(6):
+                    random_return_action[i,j,random_actions[i,j]]=1.0
+            # print(actions)
+            # print(return_action)
+
+            actions = random_actions
+            return_action = random_return_action
+        return actions,return_action
 
     def forward(self, ep_batch):
         agent_inputs = self._build_inputs(ep_batch)

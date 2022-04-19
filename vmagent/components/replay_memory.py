@@ -14,11 +14,13 @@ class ReplayMemory:
         self.memory = {'obs': np.array([]), 'action': np.array([]),
                        'reward': np.array([]), 'next_obs': np.array([]), 'done': np.array([])}
         self.nb_sampels = 0
+        self.base = 0
 
     def clean(self,):
         self.memory = {'obs': np.array([]), 'action': np.array([]),
                        'reward': np.array([]), 'next_obs': np.array([]), 'done': np.array([])}
         self.nb_sampels = 0
+        self.base = 0
 
     def push(self, exp):
         nb_added = exp['obs'].shape[0]
@@ -55,18 +57,28 @@ class ReplayMemory:
                 return i
 
     def sample(self, ori_batch_size):
+        if self.base == self.__len__():
+            return {},False
+            
         batch_size = ori_batch_size
         if batch_size > self.__len__():
             batch_size = self.__len__()
-        idxs = np.array(random.sample(range(self.__len__()), batch_size))
         res = {}
         try:
-            for key in self.memory.keys():
-                res[key] = self.memory[key][idxs]
+            if self.base+batch_size<self.__len__():
+                for key in self.memory.keys():
+                    res[key] = self.memory[key][self.base:self.base+batch_size]
+                self.base += batch_size
+                return res,True
+            else:
+                for key in self.memory.keys():
+                    res[key] = self.memory[key][self.base:]
+                self.base == self.__len__()
+                return res,False
         except:
             import pdb
             pdb.set_trace()
-        return res
+        return res, False
 
     def __len__(self):
         if self.nb_sampels > self.capacity:

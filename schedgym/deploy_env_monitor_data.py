@@ -16,16 +16,14 @@ import copy
 import math
 
 
-NODE_CPU = 4
 NODE_OVER_UTILIZED_THRESHOLD = 0.8
 NODE_UNDER_UTILIZED_THRESHOLD = 0.2
 NODE_OVER_UTILIZED_PENALTY = 1
 NODE_UNDER_UTILIZED_PENALTY = 1
 POD_UNDER_REQUESTED_PENALTY = 1
-MIGRATION_COST_PENALTY = 0.5
+MIGRATION_COST_PENALTY = 0.2
 
-df = pd.read_csv('/data/monitor_usage_data.csv')
-df = df.assign(used_cpu=lambda x: x.used_cpu/NODE_CPU)
+df = pd.read_csv('/data/rise_monitor_usage_data.csv')
 
 def getNextData(step,pod_num):
     '''
@@ -100,8 +98,8 @@ class Cluster():
     def describe(self,step):
         ret=[]
         step = int(step)
-        for t in range(step,step+300,30):
-            for node in self.nodes:
+        for node in self.nodes:
+            for t in range(step,step+300,30):
                 node_data = []
                 for i in range(self.pods_num):
                     node_data.append([0.0,0.0])
@@ -170,6 +168,7 @@ class DeployEnvMonitorData(gym.Env):
     '''
     def step(self, actions):
         migration_cost = self._step(actions)
+        # print(migration_cost)
         reward = self.reward(migration_cost)
         state = self.cluster.describe(self.t)
         self.t += 300
@@ -184,17 +183,18 @@ class DeployEnvMonitorData(gym.Env):
         under = 0
         for node in state:
             # assigned_cpu/total_cpu
-            cpu_util = node[:,0].sum()/10
-            mem_util = node[:,1].sum()/10
-            if cpu_util/NODE_CPU>NODE_OVER_UTILIZED_THRESHOLD:
-                over += 1/(1-math.exp((1+NODE_OVER_UTILIZED_THRESHOLD)/2-cpu_util))
+            cpu_util = node[:,0].sum()
+            mem_util = node[:,1].sum()
+            if cpu_util>NODE_OVER_UTILIZED_THRESHOLD:
+                over += max(5*cpu_util-4,10*cpu_util-9)
             if mem_util>0.8:
-                over += 1/(1-math.exp((1+0.8)/2-mem_util))
+                over += max(5*mem_util-4,10*mem_util-9)
             if cpu_util!=0 and cpu_util<NODE_UNDER_UTILIZED_THRESHOLD:
-                under += 1/(1-math.exp(cpu_util-NODE_UNDER_UTILIZED_THRESHOLD/2))
+                under += -5*cpu_util+1
             if mem_util!=0 and mem_util<0.2:
-                under += 1/(1-math.exp(mem_util-0.2/2))
+                under += -5*mem_util+1
         resource_penalty = NODE_OVER_UTILIZED_PENALTY*over + NODE_UNDER_UTILIZED_PENALTY*under
+        # print(f'resource_penalty: {resource_penalty}\n')
 
         # 2. 性能考量
 
@@ -202,6 +202,7 @@ class DeployEnvMonitorData(gym.Env):
 
         # 4. 迁移成本考量：被迁移的pod的request_cpu和request_mem累加
         migration_penalty = MIGRATION_COST_PENALTY*migration_cost
+        # print(f'migration_penalty: {migration_penalty}\n')
         return -resource_penalty-migration_cost
         
     def get_attr(self, attr_name):

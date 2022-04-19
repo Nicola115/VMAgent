@@ -29,6 +29,7 @@ if conf.lr is not None:
 
 MAX_EPOCH = args.max_epoch
 BATCH_SIZE = args.batch_size
+print(args.capacity)
 
 logpath = '../log/search_'+str(args.learner)+conf.env+'/'+str(args.learner) + \
     str(args.gamma)+'_' + str(args.lr)+'/'
@@ -59,7 +60,7 @@ def make_env(N, cpu, mem, allow_release, double_thr=1e10):
             env = env_REGISTRY[args.env](nodes_num,pods_num,init_data)
             return env
         elif args.env=="deployenv_monitor_data":
-            init_data = pd.read_csv('/data/monitor_init_data.csv')
+            init_data = pd.read_csv('/data/rise_monitor_init_data.csv')
             nodes_num = len(init_data['node_id'].unique())
             pods_num = len(init_data['pod_id'].unique())
             env = env_REGISTRY[args.env](nodes_num,pods_num,init_data)
@@ -92,8 +93,9 @@ def run(envs, step_list, mac, mem, learner, eps, args):
             state = {'obs': obs, 'feat': feat, 'avail': avail}
         
         action, raw_action = mac.select_actions(state, eps)
-        
+        # print(action)
         action, next_obs, reward, done = envs.step(action)
+        # print(reward)
 
         stop_idxs[alives] += 1
 
@@ -117,7 +119,7 @@ if __name__ == "__main__":
     else:
         double_thr = args.double_thr
 
-    init_data = pd.read_csv('/data/monitor_init_data.csv')
+    init_data = pd.read_csv('/data/rise_monitor_init_data.csv')
     nodes_num = len(init_data['node_id'].unique())
     pods_num = len(init_data['pod_id'].unique())
     args.node_num = nodes_num
@@ -151,7 +153,9 @@ if __name__ == "__main__":
 
         # start optimization
         for i in range(args.train_n):
-            batch = mem.sample(BATCH_SIZE)
+            batch,exist = mem.sample(BATCH_SIZE)
+            if not exist:
+                break
             metrics = learner.train(batch)
 
         # log training curves
@@ -160,6 +164,7 @@ if __name__ == "__main__":
         metrics['tot_len'] = train_len.mean()
         print(f'Epoch {x}/{MAX_EPOCH}; total_reward: {train_rew.mean()}, total_len: {train_len.mean()}, critic_loss: {metrics["critic_loss"]}, actor_loss: {metrics["actor_loss"]}')
         logx.metric('train', metrics, x)
+        mem.clean()
 
         if x % args.test_interval == 0:
             envs.reset(my_steps, nodes_num, pods_num, init_data)
@@ -171,6 +176,7 @@ if __name__ == "__main__":
             }
 
             logx.metric('val', val_metric, x)
+            mem.clean()
 
             path = f'{logpath}/models/{args.N}server-{x}'
             
