@@ -17,14 +17,19 @@ args = Config(args.env, args.alg)
 args.env = 'deployenv_monitor_data'
 
 # 环境初始化
-init_data = pd.read_csv('/data/rise_monitor_init_data.csv')
-nodes_num = len(init_data['node_id'].unique())
-pods_num = len(init_data['pod_id'].unique())
+init_data = pd.read_csv('/data/monitor_init_data_imbalanced.csv')
+nodes_num = 2
+pods_num = 6
 env = env_REGISTRY[args.env](nodes_num,pods_num,init_data)
 env.reset(0,nodes_num,pods_num,init_data)
 
 # 内存回放初始化
 mem = mem_REGISTRY[args.memory](args)
+migrate_count = 0
+cpu_over = 0
+cpu_under = 0
+mem_over = 0
+mem_under = 0
 
 def select_action(state):
     # 1. 计算original mapping
@@ -44,9 +49,9 @@ def select_action(state):
 
     # 3. 选择热点服务器
     node_target = []
-    if node1_mean.sum()>0.8 and node2_mean.sum()<0.8:
+    if node1_mean.sum()>0.6:
         node_target = node1
-    elif node2_mean.sum()>0.8 and node1_mean.sum()<0.8:
+    elif node2_mean.sum()>0.6:
         node_target = node2
     else:
         return original_mapping
@@ -54,7 +59,7 @@ def select_action(state):
     # 4. 选择热点容器
     pri1 = np.argsort(node_target.mean(0))
     original_mapping[pri1[0]] = ~original_mapping[pri1[0]]
-    print(migrate)
+    migrate_count+=1
     return original_mapping
     
 
@@ -64,6 +69,10 @@ def run(env, step, mem):
     tot_reward = 0
     tot_lenth = 0
     done_flag = False
+    global cpu_over
+    global cpu_under
+    global mem_over
+    global mem_under
     while True:
         # get action
         step += 1
@@ -76,6 +85,18 @@ def run(env, step, mem):
         feat = env.get_attr('req')
         obs = env.get_attr('obs')
         state = {'obs': obs, 'feat': feat, 'avail': avail}
+        for node in obs:
+            # import pdb;pdb.set_trace()
+            cpu = node[:,0].sum()
+            mem = node[:,1].sum()
+            if cpu>0.8:
+                cpu_over+=1
+            if cpu!=0 and cpu<0.2:
+                cpu_under+=1
+            if mem>0.8:
+                mem_over+=1
+            if mem!=0 and mem<0.2:
+                mem_under+=1
         
         action = select_action(state)
        
@@ -96,3 +117,4 @@ val_metric = {
 }
 
 print(val_return, val_lenth)
+print(f"migrate_count:{migrate_count}, cpu_over:{cpu_over}, cpu_under:{cpu_under}, mem_over:{mem_over}, mem_under:{mem_under}")

@@ -13,6 +13,7 @@ class QmixAgentForDeploy(nn.Module):
         super(QmixAgentForDeploy, self).__init__()
         self.state_space = state_space
         self.act_space = act_space
+        self.node_num = state_space[1]/10
 
         self.features = nn.Sequential(
             nn.Conv2d(self.state_space[0],32,kernel_size=2,stride=1),
@@ -22,6 +23,7 @@ class QmixAgentForDeploy(nn.Module):
             nn.Conv2d(64,64,kernel_size=2,stride=1),
             nn.ReLU()
         )
+        self.bn = nn.BatchNorm2d(64, eps=1e-5, momentum=0.1, affine=True, track_running_stats=True)
 
         self.fc = nn.Sequential(
             nn.Linear(self.feature_size(),512),
@@ -39,6 +41,7 @@ class QmixAgentForDeploy(nn.Module):
         x = th.transpose(x,1,3)
         x = x.reshape(-1,x.shape[1],x.shape[2],x.shape[3])
         x = self.features(x)
+        x = self.bn(x)
         x = x.view(x.size(0),-1)
         x = self.fc(x)
         return x

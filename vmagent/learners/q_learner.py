@@ -197,6 +197,7 @@ class Critic(nn.Module):
         super(Critic, self).__init__()
         self.state_space = state_space
         self.act_space = act_space
+        self.node_num = state_space[1]/10
 
         self.features = nn.Sequential(
             nn.Conv2d(self.state_space[0],32,kernel_size=2,stride=1),
@@ -254,9 +255,91 @@ class QmixLearner:
         self.target_critic_param = list(self.target_critic.parameters())
 
         self.learn_cnt= 0
+        self.learn_cnt_critic = 0
+        self.learn_cnt_actor = 0
         self.tau = self.args.tau
         self.gpu_enable = True
 
+    def train_critic(self,batch):
+        # 1. get history observation, action, reward and next observation
+        obs = batch['obs']
+        action_list = batch['action']
+        reward_list = batch['reward']
+        next_obs = batch['next_obs']
+        mask_list = 1 - batch['done']
+        obs = th.FloatTensor(obs)
+        a = th.FloatTensor(action_list)
+        rew = th.FloatTensor(reward_list)
+        mask = th.LongTensor(mask_list)
+        next_obs = th.FloatTensor(next_obs)
+        
+        if self.gpu_enable:
+            obs = obs.cuda()
+            a = a.cuda()
+            rew = rew.cuda()
+            mask = mask.cuda()
+            next_obs = next_obs.cuda()
+
+        # 2. update critic
+        critic_out = self.critic.forward(obs,a)
+        target_actor_out = self.actor.forward(next_obs)
+        target_critic_out = self.target_critic.forward(next_obs,target_actor_out)
+        target_critic_out = rearrange(target_critic_out, 'b () -> b')
+        y = rew + self.args.gamma * mask * target_critic_out
+        y = rearrange(y, 'b -> b ()')
+        td_error = (critic_out - y.detach())
+        loss_for_critic = (td_error**2).sum() / obs.shape[0]
+        self.critic_optimiser.zero_grad()
+        loss_for_critic.backward()
+        self.critic_optimiser.step()
+
+        # 3. update target_critic
+        self.learn_cnt_critic += 1
+        if  self.learn_cnt_critic / self.args.target_update_interval >= 1.0:
+            self._update_critic()
+            self.learn_cnt_critic = 0
+        return {
+            'critic_loss': loss_for_critic.detach().cpu()
+        }
+
+    def train_actor(self,batch):
+        obs = batch['obs']
+        obs = th.FloatTensor(obs)
+        if self.gpu_enable:
+            obs = obs.cuda()
+        
+        for param in self.critic.parameters():
+            param.requires_grad = False
+
+        # import pdb
+        # pdb.set_trace()
+        actor_out = self.actor.forward(obs)
+        freeze_critic_out = self.critic.forward(obs, actor_out)
+        loss_for_actor = - freeze_critic_out.sum() / obs.shape[0] #TODO: this loss function can be replaced by gan loss
+        if loss_for_actor>0:
+            self.actor_optimiser.zero_grad()
+            loss_for_actor.backward()
+            self.actor_optimiser.step()
+
+        for param in self.critic.parameters():
+            param.requires_grad = True
+
+        # 3. update target_critic
+        self.learn_cnt_actor += 1
+        if  self.learn_cnt_actor / self.args.target_update_interval >= 1.0:
+            self._update_actor()
+            self.learn_cnt_actor = 0
+        return {
+            'actor_loss': loss_for_actor.detach().cpu()
+        }
+
+    def _update_critic(self):
+        for target_param, local_param in zip(self.target_critic.parameters(), self.critic.parameters()):
+            target_param.data.copy_(self.tau*local_param.data + (1.0-self.tau)*target_param.data)
+    
+    def _update_actor(self):
+        for target_param, local_param in zip(self.target_actor.parameters(), self.actor.parameters()):
+            target_param.data.copy_(self.tau*local_param.data + (1.0-self.tau)*target_param.data)
 
     def train(self, batch):
         # 1. get history observation, action, reward and next observation
@@ -386,7 +469,7 @@ class CriticGumbelSoftmax(nn.Module):
         x = x.view(x.size(0),-1)
         x = self.fc(x)
         logits = rearrange(x, 'b (p n) -> b p n',p=self.pod_num)
-        x = F.gumbel_softmax(logits, tau=1, hard=True)
+        x = F.gumbel_softmax(logits, tau=1, hard=False)
 
         x = th.cat((x,action),1)
         x = rearrange(x,'b p n -> b (p n)')
@@ -408,9 +491,83 @@ class QmixLearnerGumbelSoftmax:
         self.target_critic_param = list(self.target_critic.parameters())
 
         self.learn_cnt= 0
+        self.learn_cnt_critic = 0
+        self.learn_cnt_actor = 0
         self.tau = self.args.tau
         self.gpu_enable = True
 
+    def train_critic(self,batch):
+        # 1. get history observation, action, reward and next observation
+        obs = batch['obs']
+        action_list = batch['action']
+        reward_list = batch['reward']
+        next_obs = batch['next_obs']
+        mask_list = 1 - batch['done']
+        obs = th.FloatTensor(obs)
+        a = th.FloatTensor(action_list)
+        rew = th.FloatTensor(reward_list)
+        mask = th.LongTensor(mask_list)
+        next_obs = th.FloatTensor(next_obs)
+        
+        if self.gpu_enable:
+            obs = obs.cuda()
+            a = a.cuda()
+            rew = rew.cuda()
+            mask = mask.cuda()
+            next_obs = next_obs.cuda()
+
+        # 2. update critic
+        critic_out = self.critic.forward(obs,a)
+        target_actor_out = self.target_actor.forward(next_obs)
+        target_critic_out = self.target_critic.forward(next_obs,target_actor_out)
+        target_critic_out = rearrange(target_critic_out, 'b () -> b')
+        y = rew + self.args.gamma * mask * target_critic_out
+        y = rearrange(y, 'b -> b ()')
+        td_error = (critic_out - y.detach())
+        loss_for_critic = (td_error**2).sum() / obs.shape[0]
+        self.critic_optimiser.zero_grad()
+        loss_for_critic.backward()
+        self.critic_optimiser.step()
+
+        # 3. update target_critic
+        self.learn_cnt_critic += 1
+        if  self.learn_cnt_critic / self.args.target_update_interval >= 1.0:
+            self._update_critic()
+            self.learn_cnt_critic = 0
+        return {
+            'critic_loss': loss_for_critic.detach().cpu()
+        }
+
+    def train_actor(self,batch):
+        obs = batch['obs']
+        obs = th.FloatTensor(obs)
+        if self.gpu_enable:
+            obs = obs.cuda()
+        
+        for param in self.critic.parameters():
+            param.requires_grad = False
+
+        # import pdb
+        # pdb.set_trace()
+        actor_out = self.actor.forward(obs)
+        freeze_critic_out = self.critic.forward(obs, actor_out)
+        loss_for_actor = - freeze_critic_out.sum() / obs.shape[0] #TODO: this loss function can be replaced by gan loss
+        if loss_for_actor>0:
+            self.actor_optimiser.zero_grad()
+            loss_for_actor.backward()
+            self.actor_optimiser.step()
+
+        for param in self.critic.parameters():
+            param.requires_grad = True
+
+        # 3. update target_critic
+        self.learn_cnt_actor += 1
+        if  self.learn_cnt_actor / self.args.target_update_interval >= 1.0:
+            self._update_actor()
+            self.learn_cnt_actor = 0
+        return {
+            'actor_loss': loss_for_actor.detach().cpu()
+        }
 
     def train(self, batch):
         # 1. get history observation, action, reward and next observation
@@ -470,6 +627,13 @@ class QmixLearnerGumbelSoftmax:
             'actor_loss': loss_for_actor.detach().cpu()
         }
         
+    def _update_critic(self):
+        for target_param, local_param in zip(self.target_critic.parameters(), self.critic.parameters()):
+            target_param.data.copy_(self.tau*local_param.data + (1.0-self.tau)*target_param.data)
+    
+    def _update_actor(self):
+        for target_param, local_param in zip(self.target_actor.parameters(), self.actor.parameters()):
+            target_param.data.copy_(self.tau*local_param.data + (1.0-self.tau)*target_param.data)
 
     def _update_targets(self):
         for target_param, local_param in zip(self.target_critic.parameters(), self.critic.parameters()):

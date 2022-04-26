@@ -21,9 +21,9 @@ NODE_UNDER_UTILIZED_THRESHOLD = 0.2
 NODE_OVER_UTILIZED_PENALTY = 1
 NODE_UNDER_UTILIZED_PENALTY = 1
 POD_UNDER_REQUESTED_PENALTY = 1
-MIGRATION_COST_PENALTY = 0.2
+MIGRATION_COST_PENALTY = 0.1
 
-df = pd.read_csv('/data/rise_monitor_usage_data.csv')
+df = pd.read_csv('/data/clusterdata/cluster-trace-v2017/usage_data_small.csv')
 
 def getNextData(step,pod_num):
     '''
@@ -34,8 +34,8 @@ def getNextData(step,pod_num):
     request = pd.DataFrame(columns=df.columns)
     counter = 0
     step = int(step)
-    for t in range(step, step+300, 30):
-        selected_df = df[(df['start_time']>=t) & (df['start_time']<(t+30))]
+    for t in range(step, step+3000, 300):
+        selected_df = df[(df['start_time']>=t) & (df['start_time']<(t+300))]
         selected_df = selected_df.assign(start_time=t)
         added = selected_df.groupby('pod_id').mean().reset_index()
         request = request.append(added)
@@ -50,7 +50,7 @@ def getNextData(step,pod_num):
     return request
 
 def hasNextData(step):
-    request = df[(df['start_time']>=step) & (df['start_time']<=(step+300))]
+    request = df[(df['start_time']>=step) & (df['start_time']<=(step+3000))]
     return len(request)!=0
 
 class Pod():
@@ -95,11 +95,21 @@ class Cluster():
             cost+=1
         return cost
 
+    def get_migrate_count(self,action):
+        assert action.shape==(self.pods_num,), f'{action.shape}'
+        cost = 0
+        for pod_index, pod_action in enumerate(action):
+            assert pod_action>=0 and pod_action<self.nodes_num,f'{pod_action}' 
+            if self.pods[pod_index].current_node==pod_action:
+                continue
+            cost+=1
+        return cost
+
     def describe(self,step):
         ret=[]
         step = int(step)
         for node in self.nodes:
-            for t in range(step,step+300,30):
+            for t in range(step,step+3000,300):
                 node_data = []
                 for i in range(self.pods_num):
                     node_data.append([0.0,0.0])
@@ -130,7 +140,7 @@ class DeployEnvMonitorData(gym.Env):
         t reset到step后第一个请求分配的请求
     '''
     def reset(self, step,nodes_num,pods_num,init_data):
-        self.t = step*300+self.start
+        self.t = step*3000+self.start
         self.cluster.reset(nodes_num,pods_num,init_data)
         self.handle_next_request()
         state = self.cluster.describe(self.t)
@@ -169,10 +179,10 @@ class DeployEnvMonitorData(gym.Env):
     def step(self, actions):
         migration_cost = self._step(actions)
         # print(migration_cost)
+        self.t += 3000
+        self.handle_next_request()
         reward = self.reward(migration_cost)
         state = self.cluster.describe(self.t)
-        self.t += 300
-        self.handle_next_request()
         done = self.termination()
         return actions, state, reward, done
 
@@ -203,7 +213,7 @@ class DeployEnvMonitorData(gym.Env):
         # 4. 迁移成本考量：被迁移的pod的request_cpu和request_mem累加
         migration_penalty = MIGRATION_COST_PENALTY*migration_cost
         # print(f'migration_penalty: {migration_penalty}\n')
-        return -resource_penalty-migration_cost
+        return -resource_penalty-migration_penalty
         
     def get_attr(self, attr_name):
         # request是还没有handle的下一阶段的请求
@@ -212,4 +222,8 @@ class DeployEnvMonitorData(gym.Env):
         elif attr_name == 'req_step':
             return self.t
         return None
+
+    def get_migrate_count(self,action):
+        return self.cluster.get_migrate_count(action)
+
 

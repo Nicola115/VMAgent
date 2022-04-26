@@ -51,7 +51,7 @@ class QmixAgentForDeployGumbelSoftmax(nn.Module):
         x = x.view(x.size(0),-1)
         x = self.fc(x)
         logits = rearrange(x, 'b (p n) -> b p n',p=self.pod_num)
-        action = F.gumbel_softmax(logits, tau=1, hard=True)
+        action = F.gumbel_softmax(logits, tau=1, hard=False)
         return action
 
         

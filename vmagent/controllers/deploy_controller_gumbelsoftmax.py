@@ -22,7 +22,7 @@ class DeployGumbelSoftmaxMAC:
     def __init__(self, args):
         self.args = args
         self.node_num = args.node_num
-        self.pod_num = args.node_num
+        self.pod_num = args.pod_num
         action_space = args.pod_num*args.node_num
         obs_space = (2,args.node_num*10,args.pod_num) # TODO: hard code: routine number 5;timestamp number 10
         self._build_agents(obs_space, action_space, args)
@@ -33,17 +33,13 @@ class DeployGumbelSoftmaxMAC:
         return_action = agent_outputs.cpu().detach().numpy()
         actions = th.argmax(agent_outputs,dim=2)
         actions = actions.cpu().detach().numpy().astype(int)
-        if random.random()<0.2:
-            # import pdb;pdb.set_trace()
-            random_actions = np.zeros(actions.shape,dtype=int)
+        if random.random()<eps:                         #TODO: 探索概率更新
             random_return_action = np.zeros(return_action.shape)
-            for i in range(len(actions)):
-                random_actions[i] = np.random.randint(2,size=6)
-                for j in range(6):
-                    random_return_action[i,j,random_actions[i,j]]=1.0
-            # print(actions)
-            # print(return_action)
-
+            for i in range(len(return_action)):
+                random_return_action[i] = np.random.dirichlet(np.ones(2),size=self.pod_num)
+            # print(random_return_action)
+            random_actions = np.argmax(random_return_action,axis=2)
+            assert random_actions.shape==actions.shape and random_return_action.shape==return_action.shape, f'{random_return_action.shape}'
             actions = random_actions
             return_action = random_return_action
         return actions,return_action

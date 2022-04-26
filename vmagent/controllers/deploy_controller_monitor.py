@@ -47,10 +47,10 @@ class DeployMonitorMAC:
 
     def _build_inputs(self, states):
         if type(states) is dict:
-            # avail_actions = th.Tensor(states['avail']).cuda()
             # import pdb; pdb.set_trace()
             obs = th.Tensor(states['obs']).cuda()
-            # feat = th.Tensor(states['feat']).cuda()
+            if obs.dim()==3:
+                obs = obs.unsqueeze(0)
             return obs
         elif type(states) is list:
             return states

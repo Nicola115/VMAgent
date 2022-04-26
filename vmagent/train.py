@@ -14,6 +14,12 @@ from hashlib import sha1
 import time
 import json
 import pandas as pd
+import random
+import torch
+
+random.seed(224)
+torch.manual_seed(224)
+torch.cuda.manual_seed_all(224)
 
 parser = argparse.ArgumentParser(description='Sched More Servers')
 parser.add_argument('--env', type=str)
@@ -60,7 +66,7 @@ def make_env(N, cpu, mem, allow_release, double_thr=1e10):
             env = env_REGISTRY[args.env](nodes_num,pods_num,init_data)
             return env
         elif args.env=="deployenv_monitor_data":
-            init_data = pd.read_csv('/data/rise_monitor_init_data.csv')
+            init_data = pd.read_csv('/data/clusterdata/cluster-trace-v2017/init_data_small.csv')
             nodes_num = len(init_data['node_id'].unique())
             pods_num = len(init_data['pod_id'].unique())
             env = env_REGISTRY[args.env](nodes_num,pods_num,init_data)
@@ -69,7 +75,7 @@ def make_env(N, cpu, mem, allow_release, double_thr=1e10):
     return _init
 
 
-def run(envs, step_list, mac, mem, learner, eps, args):
+def run(envs, step_list, mac, mem, learner, random_act, args):
     tot_reward = np.array([0. for j in range(args.num_process)])
     tot_lenth = np.array([0. for j in range(args.num_process)])
     step = 0
@@ -81,7 +87,7 @@ def run(envs, step_list, mac, mem, learner, eps, args):
 
         alives = envs.get_alives().copy()
         if all(~alives):
-            return tot_reward.mean(), tot_lenth.mean()
+            return tot_reward, tot_lenth
 
         if args.env=='deployenv':
             obs = envs.get_attr('obs')
@@ -92,7 +98,7 @@ def run(envs, step_list, mac, mem, learner, eps, args):
             obs = envs.get_attr('obs')
             state = {'obs': obs, 'feat': feat, 'avail': avail}
         
-        action, raw_action = mac.select_actions(state, eps)
+        action, raw_action = mac.select_actions(state, random_act)
         # print(action)
         action, next_obs, reward, done = envs.step(action)
         # print(reward)
@@ -104,13 +110,17 @@ def run(envs, step_list, mac, mem, learner, eps, args):
 
         buf = {'obs': obs, 'action': raw_action,'reward': reward, 'next_obs': next_obs, 'done': done}
         mem.push(buf)
+        if len(mem)>=BATCH_SIZE:
+            batch = mem.sample(BATCH_SIZE)
+            critic_loss = learner.train_critic(batch)
+            # print(critic_loss)
 
 
 if __name__ == "__main__":
     # execution
-    step_list = []
+    step_list = [0]
     # args.num_process is defined in default.yaml as 5
-    for i in range(args.num_process):
+    for i in range(args.num_process-1):
         step_list.append(np.random.randint(0, 143))
     my_steps = np.array(step_list) # my_step is a 5 items' list, contains 5 random int from 1000-9999 
 
@@ -119,7 +129,7 @@ if __name__ == "__main__":
     else:
         double_thr = args.double_thr
 
-    init_data = pd.read_csv('/data/rise_monitor_init_data.csv')
+    init_data = pd.read_csv('/data/clusterdata/cluster-trace-v2017/init_data_small.csv')
     nodes_num = len(init_data['node_id'].unique())
     pods_num = len(init_data['pod_id'].unique())
     args.node_num = nodes_num
@@ -137,9 +147,10 @@ if __name__ == "__main__":
     learner = le_REGISTRY[args.learner](mac, args)
     mem = mem_REGISTRY[args.memory](args)
     t_start = time.time()
+    max_reward = None
     for x in range(MAX_EPOCH):
-        eps = linear_decay(x, [0, int(
-            MAX_EPOCH * 0.25),  int(MAX_EPOCH * 0.9), MAX_EPOCH], [0.9, 0.5, 0.2, 0.2])
+        random_act = linear_decay(x,[0, int(
+            MAX_EPOCH * 0.25),  int(MAX_EPOCH * 0.9), MAX_EPOCH],[0.2,0.1,0.05,0.025])
         if args.env=='deployenv':
             envs.reset(my_steps,nodes,pods)
         elif args.env=='deployenv_alibaba' or args.env=='deployenv_monitor_data':
@@ -148,47 +159,22 @@ if __name__ == "__main__":
             envs.reset(my_steps) # set env.t and env.start to my_steps
 
         train_rew, train_len = run(
-            envs, my_steps, mac, mem, learner, eps, args)
-        actor_loss, critic_loss, critic1_loss, critic2_loss, alpha_loss = [0 for i in range(5)]
+            envs, my_steps, mac, mem, learner, random_act, args)
 
         # start optimization
         for i in range(args.train_n):
-            batch,exist = mem.sample(BATCH_SIZE)
-            if not exist:
-                break
-            metrics = learner.train(batch)
+            batch = mem.sample(BATCH_SIZE)
+            actor_loss = learner.train_actor(batch)
+            print(actor_loss)
 
         # log training curves
-        metrics['eps'] = eps
-        metrics['tot_reward'] = train_rew.mean()
-        metrics['tot_len'] = train_len.mean()
-        print(f'Epoch {x}/{MAX_EPOCH}; total_reward: {train_rew.mean()}, total_len: {train_len.mean()}, critic_loss: {metrics["critic_loss"]}, actor_loss: {metrics["actor_loss"]}')
+        metrics = {}
+        metrics['random_act'] = random_act
+        metrics['tot_reward'] = train_rew.sum()
+        metrics['tot_len'] = train_len.sum()
+        print(f'Epoch {x}/{MAX_EPOCH}; total_reward: {train_rew[0]}, total_len: {train_len[0]}')
         logx.metric('train', metrics, x)
-        mem.clean()
-
-        if x % args.test_interval == 0:
-            envs.reset(my_steps, nodes_num, pods_num, init_data)
-            val_return, val_lenth = run(
-                envs, my_steps, mac, mem, learner, 0, args)
-            val_metric = {
-                'tot_reward': val_return.mean(),
-                'tot_len': val_lenth.mean(),
-            }
-
-            logx.metric('val', val_metric, x)
-            mem.clean()
-
-            path = f'{logpath}/models/{args.N}server-{x}'
-            
-
-            if not os.path.exists(path):
-                os.makedirs(path)
-
-            learner.save_models(path)
-
-            t_end = time.time()
-            print(f'Epoch {x}/{MAX_EPOCH}; lasted %d hour, %d min, %d sec ' %
-                  time_format(t_end - t_start))
-            # print('remain %d hour, %d min, %d sec' % time_format(
-                # (MAX_EPOCH-x)//args.test_interval * (t_end - t_start)))
-            # t_start = t_end
+        if max_reward is None or max_reward<train_rew[0]:
+            max_reward = train_rew[0]
+            print(f"save_models:{train_rew[0]}")
+            learner.save_models('models')
