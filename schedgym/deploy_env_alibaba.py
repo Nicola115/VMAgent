@@ -15,14 +15,14 @@ import pandas as pd
 import copy
 
 
-NODE_OVER_UTILIZED_THRESHOLD = 0.8*64
-NODE_UNDER_UTILIZED_THRESHOLD = 0.2*64
-NODE_OVER_UTILIZED_PENALTY = 0.6
-NODE_UNDER_UTILIZED_PENALTY = 0.4
+NODE_OVER_UTILIZED_THRESHOLD = 0.8
+NODE_UNDER_UTILIZED_THRESHOLD = 0.2
+NODE_OVER_UTILIZED_PENALTY = 1
+NODE_UNDER_UTILIZED_PENALTY = 1
 POD_UNDER_REQUESTED_PENALTY = 1
 MIGRATION_COST_PENALTY = 0.1
 
-df = pd.read_csv('/data/clusterdata/cluster-trace-v2017/usage_data_small.csv')
+df = pd.read_csv('/data/clusterdata/cluster-trace-v2017/usage_data_small_imb.csv')
 
 def getNextData(step):
     '''
@@ -91,14 +91,24 @@ class Cluster():
             cost+=1
         return cost
 
+    def get_migrate_count(self,action):
+        assert action.shape==(self.pods_num,), f'{action.shape}'
+        cost = 0
+        for pod_index, pod_action in enumerate(action):
+            assert pod_action>=0 and pod_action<self.nodes_num,f'{pod_action}' 
+            if self.pods[pod_index].current_node==pod_action:
+                continue
+            cost+=1
+        return cost
+
     def describe(self):
         ret = []
         for node in self.nodes:
             node_data = []
-            for pod_index in node.pods:
-                node_data.append([self.pods[pod_index].used_cpu,self.pods[pod_index].used_mem])
-            for i in range(self.pods_num-len(node.pods)):
+            for i in range(self.pods_num):
                 node_data.append([0.0,0.0])
+            for pod_index in node.pods:
+                node_data[pod_index] = [float(self.pods[pod_index].used_cpu),float(self.pods[pod_index].used_mem)]
             ret.append(node_data)
         return np.array(ret)
 
@@ -171,13 +181,13 @@ class DeployEnvAlibaba(gym.Env):
             cpu_util = node[:,0].sum()
             mem_util = node[:,1].sum()
             if cpu_util>NODE_OVER_UTILIZED_THRESHOLD:
-                over += 1
+                over += max(5*cpu_util-4,10*cpu_util-9)
             if mem_util>0.8:
-                over += 1
+                over += max(5*mem_util-4,10*mem_util-9)
             if cpu_util!=0 and cpu_util<NODE_UNDER_UTILIZED_THRESHOLD:
-                under += 1
+                under += -5*cpu_util+1
             if mem_util!=0 and mem_util<0.2:
-                under += 1
+                under += -5*mem_util+1
         resource_penalty = NODE_OVER_UTILIZED_PENALTY*over + NODE_UNDER_UTILIZED_PENALTY*under
 
         # 2. 性能考量
@@ -186,7 +196,7 @@ class DeployEnvAlibaba(gym.Env):
 
         # 4. 迁移成本考量：被迁移的pod的request_cpu和request_mem累加
         migration_penalty = MIGRATION_COST_PENALTY*migration_cost
-        return -resource_penalty-migration_cost
+        return -resource_penalty-migration_penalty
         
     def get_attr(self, attr_name):
         # request是还没有handle的下一阶段的请求
@@ -195,4 +205,7 @@ class DeployEnvAlibaba(gym.Env):
         elif attr_name == 'req_step':
             return self.t
         return None
+
+    def get_migrate_count(self,action):
+        return self.cluster.get_migrate_count(action)
 

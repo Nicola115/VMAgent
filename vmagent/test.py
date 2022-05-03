@@ -21,16 +21,16 @@ if conf.lr is not None:
 
 if __name__ == "__main__":
     # 初始化env
-    init_data = pd.read_csv('/data/monitor_init_data_imbalanced.csv')
-    nodes_num = 2
-    pods_num = 6
+    init_data = pd.read_csv('/data/clusterdata/cluster-trace-v2017/init_data_small_imb.csv')
+    nodes_num = 96
+    pods_num = 100
     args.node_num = nodes_num
     args.pod_num = pods_num
-    env = env_REGISTRY["deployenv_monitor_data"](nodes_num,pods_num,init_data)
+    env = env_REGISTRY["deployenv_alibaba"](nodes_num,pods_num,init_data)
 
     #初始化mac
     mac = mac_REGISTRY["deploy_monitor_mac"](args)
-    mac.load_models("models")
+    mac.load_models("/data/alibaba_models")
 
     env.reset(0,nodes_num,pods_num,init_data)
     done = env.termination()

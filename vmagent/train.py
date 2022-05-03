@@ -60,9 +60,9 @@ def make_env(N, cpu, mem, allow_release, double_thr=1e10):
             env = env_REGISTRY[args.env](nodes,pods)
             return env
         elif args.env=="deployenv_alibaba":
-            init_data = pd.read_csv('/data/clusterdata/cluster-trace-v2017/init_data_small.csv')
-            nodes_num = len(init_data['node_id'].unique())
-            pods_num = len(init_data['pod_id'].unique())
+            init_data = pd.read_csv('/data/clusterdata/cluster-trace-v2017/init_data_small_imb.csv')
+            nodes_num = 96
+            pods_num = 100
             env = env_REGISTRY[args.env](nodes_num,pods_num,init_data)
             return env
         elif args.env=="deployenv_monitor_data":
@@ -129,9 +129,9 @@ if __name__ == "__main__":
     else:
         double_thr = args.double_thr
 
-    init_data = pd.read_csv('/data/clusterdata/cluster-trace-v2017/init_data_small.csv')
-    nodes_num = len(init_data['node_id'].unique())
-    pods_num = len(init_data['pod_id'].unique())
+    init_data = pd.read_csv('/data/clusterdata/cluster-trace-v2017/init_data_small_imb.csv')
+    nodes_num = 96
+    pods_num = 100
     args.node_num = nodes_num
     args.pod_num = pods_num
 
@@ -177,4 +177,4 @@ if __name__ == "__main__":
         if max_reward is None or max_reward<train_rew[0]:
             max_reward = train_rew[0]
             print(f"save_models:{train_rew[0]}")
-            learner.save_models('models')
+            learner.save_models('/data/alibaba_models_imb')

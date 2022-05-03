@@ -12,14 +12,14 @@ class Args():
         self.alg = alg
         self.memory = memory
 
-args = Args('deployenv_monitor_data','deploy_gumbelsoftmax','replay')
+args = Args('deployenv_alibaba','deploy_monitor','replay')
 args = Config(args.env, args.alg)
-args.env = 'deployenv_monitor_data'
+args.env = 'deployenv_alibaba'
 
 # 环境初始化
-init_data = pd.read_csv('/data/monitor_init_data_imbalanced.csv')
-nodes_num = 2
-pods_num = 6
+init_data = pd.read_csv('/data/clusterdata/cluster-trace-v2017/init_data_small_imb.csv')
+nodes_num = 96
+pods_num = 100
 env = env_REGISTRY[args.env](nodes_num,pods_num,init_data)
 env.reset(0,nodes_num,pods_num,init_data)
 
@@ -31,7 +31,7 @@ cpu_under = 0
 mem_over = 0
 mem_under = 0
 
-def select_action(state):
+def select_action_for_monitor_data(state):
     # 1. 计算original mapping
     # import pdb
     # pdb.set_trace()
@@ -59,9 +59,47 @@ def select_action(state):
     # 4. 选择热点容器
     pri1 = np.argsort(node_target.mean(0))
     original_mapping[pri1[0]] = ~original_mapping[pri1[0]]
+    global migrate_count
     migrate_count+=1
     return original_mapping
     
+def select_action_for_alibaba_data(state,original_mapping=None):
+    # 1. 计算original mapping
+    node = state['obs']
+    cpu_data = np.squeeze(node[:,:,0])
+    nodes = np.zeros((cpu_data.shape[0],))
+    original_mapping = np.zeros((cpu_data.shape[1],),dtype=int)
+    for i in range(cpu_data.shape[0]):
+        nodes[i] = cpu_data[i,:].sum()
+        if original_mapping is None:
+            for j in range(cpu_data.shape[1]):
+                if cpu_data[i,j]>0:
+                    original_mapping[j] = i
+
+    # 2. 计算负载均衡性
+    thegma_sum = 0
+    for i in range(len(nodes)):
+        for j in range(i+1,len(nodes),1):
+            thegma_sum+=(nodes[i]-nodes[j])**2
+    thegma = thegma_sum/len(nodes)
+    if(thegma<=0.5):
+        return original_mapping
+
+    # 3. 选择热点服务器
+    indices = np.argsort(nodes).astype(int)
+    node_target = indices[-1]
+    node_res = indices[0]
+    if original_mapping is None and nodes[node_target]<=0.8:
+        return original_mapping
+
+    # 4. 选择热点容器
+    pri1 = np.argsort(cpu_data[node_target,:]).astype(int)
+    original_mapping[pri1[-1]]=node_res
+    node[node_res,pri1[-1]] = node[node_target,pri1[-1]]
+    node[node_target,pri1[-1]]=[0.0,0.0]
+    global migrate_count
+    migrate_count+=1
+    return select_action_for_alibaba_data(state,original_mapping)
 
     
 
@@ -98,7 +136,7 @@ def run(env, step, mem):
             if mem!=0 and mem<0.2:
                 mem_under+=1
         
-        action = select_action(state)
+        action = select_action_for_alibaba_data(state)
        
         action, next_obs, reward, done = env.step(action)
         if done==True:

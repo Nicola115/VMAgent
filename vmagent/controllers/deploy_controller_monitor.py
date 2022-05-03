@@ -23,7 +23,7 @@ class DeployMonitorMAC:
         self.node_num = args.node_num
         self.pod_num = args.node_num
         action_space = args.pod_num
-        obs_space = (2,args.node_num*10,args.pod_num)
+        obs_space = (2,args.node_num,args.pod_num)
         self._build_agents(obs_space, action_space, args)
         # TODO: adapted action_selector
         # self.action_selector = action_REGISTRY['softmax_pos'](args)

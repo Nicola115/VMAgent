@@ -25,7 +25,7 @@ NODE_UNDER_UTILIZED_PENALTY = 0.4
 POD_UNDER_REQUESTED_PENALTY = 1
 MIGRATION_COST_PENALTY = 0.01
 
-df = pd.read_csv('../vmagent/data/Huawei-East-1.csv')
+df = pd.DataFrame()
 df.head()
 
 def getNextData(cur_step):

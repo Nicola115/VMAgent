@@ -197,7 +197,7 @@ class Critic(nn.Module):
         super(Critic, self).__init__()
         self.state_space = state_space
         self.act_space = act_space
-        self.node_num = state_space[1]/10
+        self.node_num = state_space[1]
 
         self.features = nn.Sequential(
             nn.Conv2d(self.state_space[0],32,kernel_size=2,stride=1),
@@ -245,11 +245,11 @@ class QmixLearner:
         self.args = args
 
         self.actor = actor
-        self.target_actor = copy.deepcopy(actor)
+        # self.target_actor = copy.deepcopy(actor)
         self.actor_optimiser = Adam(self.actor.parameters(), lr=args.lr)
-        self.target_actor_param = list(self.target_actor.parameters())
+        # self.target_actor_param = list(self.target_actor.parameters())
 
-        self.critic = Critic((2,args.node_num*10,args.pod_num),args.pod_num).cuda() # TODO: avoiding hardcode, here should be state_space and act_space
+        self.critic = Critic((2,args.node_num,args.pod_num),args.pod_num).cuda() # TODO: avoiding hardcode, here should be state_space and act_space
         self.target_critic = copy.deepcopy(self.critic)
         self.critic_optimiser = Adam(self.critic.parameters(), lr=args.lr)
         self.target_critic_param = list(self.target_critic.parameters())
@@ -325,10 +325,10 @@ class QmixLearner:
             param.requires_grad = True
 
         # 3. update target_critic
-        self.learn_cnt_actor += 1
-        if  self.learn_cnt_actor / self.args.target_update_interval >= 1.0:
-            self._update_actor()
-            self.learn_cnt_actor = 0
+        # self.learn_cnt_actor += 1
+        # if  self.learn_cnt_actor / self.args.target_update_interval >= 1.0:
+        #     self._update_actor()
+        #     self.learn_cnt_actor = 0
         return {
             'actor_loss': loss_for_actor.detach().cpu()
         }
